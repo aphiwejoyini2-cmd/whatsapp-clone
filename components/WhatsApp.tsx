@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import Image from "next/image";
+import NavigationIcon from "@/components/NavigationIcon";
+import { EMOJI_CATEGORIES, type EmojiCategory } from "@/lib/emojis";
 
-type Message = { id: string; text: string; sender: "me" | "them"; sentAt: string };
-type Settings = { theme: "light" | "dark"; compactChats: boolean; showPreviews: boolean };
+type Message = { id: string; text: string; sender: "me" | "them"; sentAt: string; audioData?: string; audioType?: string; mediaData?: string; mediaType?: string; mediaName?: string; sharedContact?: { name: string; phone: string }; edited?: boolean };
+type ChatTheme = "classic" | "sage" | "ocean" | "sunset" | "lavender" | "rose" | "mint" | "slate" | "amber" | "teal" | "sky" | "pink" | "yellow";
+type Settings = { theme: "light" | "dark"; chatTheme: ChatTheme; compactChats: boolean; showPreviews: boolean };
 type Chat = {
   id: string;
   name: string;
@@ -26,7 +29,7 @@ type Chat = {
 
 const STORAGE_KEY = "lingo:chats:v1";
 const SETTINGS_KEY = "lingo:settings:v1";
-const DEFAULT_SETTINGS: Settings = { theme: "light", compactChats: false, showPreviews: true };
+const DEFAULT_SETTINGS: Settings = { theme: "light", chatTheme: "classic", compactChats: false, showPreviews: true };
 const LANGUAGES = ["Arabic", "English", "French", "Japanese", "Portuguese", "Spanish", "Other"];
 const PHONE_COUNTRIES = [
   { name: "South Africa", code: "+27" }, { name: "United States", code: "+1" },
@@ -35,17 +38,7 @@ const PHONE_COUNTRIES = [
   { name: "India", code: "+91" }, { name: "France", code: "+33" },
   { name: "Japan", code: "+81" }, { name: "Brazil", code: "+55" },
 ];
-const EMOJI_CATEGORIES = {
-  Smileys: ["😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "😘", "😋", "😎", "🤓", "🤔", "🤗", "🤫", "😴", "😭", "😤", "😡", "🥳", "😇", "🤩", "🫶", "❤️", "💕", "💖", "✨", "💯"],
-  People: ["👋", "🤚", "✋", "🖐️", "👌", "🤌", "🤏", "✌️", "🤞", "🫰", "🤟", "🤘", "🤙", "👈", "👉", "👆", "👇", "☝️", "👍", "👎", "✊", "👊", "👏", "🙌", "👐", "🤲", "🙏", "💪", "🫂", "🤝", "🧑‍💻", "👀"],
-  Nature: ["🐶", "🐱", "🐭", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐸", "🐵", "🐧", "🐦", "🦋", "🐝", "🐬", "🐳", "🌸", "🌻", "🌹", "🌈", "☀️", "🌙", "⭐", "🌍", "🍀", "🌿", "🌊", "🔥"],
-  Food: ["🍏", "🍎", "🍐", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🫐", "🍒", "🍑", "🥭", "🍍", "🥑", "🍕", "🍔", "🍟", "🌮", "🍜", "🍣", "🍰", "🍩", "🍪", "☕", "🧋", "🥤", "🍿", "🎂", "🍫"],
-  Activities: ["⚽", "🏀", "🏈", "⚾", "🎾", "🏐", "🎱", "🏓", "🏸", "🥊", "🏆", "🥇", "🎯", "🎮", "🎲", "🎸", "🎹", "🎤", "🎧", "🎬", "🎨", "🎉", "🎊", "🎁", "🎈", "🪩"],
-  Objects: ["⌚", "📱", "💻", "⌨️", "🖥️", "📷", "💡", "📚", "✏️", "📝", "📌", "✂️", "🔒", "🔑", "💌", "📦", "🚗", "🚲", "✈️", "🚀", "🏠", "🌟", "✅", "❣️", "💬"],
-} as const;
-type EmojiCategory = keyof typeof EMOJI_CATEGORIES;
-
-function Icon({ name, size = 20 }: { name: "search" | "plus" | "smile" | "send" | "chat" | "language" | "back" | "close" | "more" | "pin" | "settings" | "phone" | "video"; size?: number }) {
+function Icon({ name, size = 20 }: { name: "search" | "plus" | "smile" | "send" | "chat" | "language" | "back" | "close" | "more" | "pin" | "settings" | "phone" | "video" | "mic" | "stop" | "attach"; size?: number }) {
   const paths = {
     search: <><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></>,
     plus: <path d="M12 5v14M5 12h14"/>,
@@ -58,6 +51,9 @@ function Icon({ name, size = 20 }: { name: "search" | "plus" | "smile" | "send" 
     more: <><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></>,
     phone: <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L8 8.9a16 16 0 0 0 6 6l.2-1.3a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.8 2.1z"/>,
     video: <><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></>,
+    mic: <><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8"/></>,
+    stop: <rect x="6" y="6" width="12" height="12" rx="2"/>,
+    attach: <path d="m21.4 11.1-8.7 8.7a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7L9.9 17a2 2 0 0 1-2.8-2.8l8.5-8.5"/>,
     pin: <><path d="m16 3 5 5-4 1-4 4 1 4-2 2-3-5-5-5 2-2 4 1 4-4z"/><path d="m2 22 7-7"/></>,
     settings: <><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1a1.7 1.7 0 1 1-2.4 2.4l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.3a1.7 1.7 0 1 1-3.4 0v-.2a1.7 1.7 0 0 0-2.9-1.2l-.1.1a1.7 1.7 0 1 1-2.4-2.4l.1-.1a1.7 1.7 0 0 0-1.2-2.9h-.3a1.7 1.7 0 1 1 0-3.4h.2a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a1.7 1.7 0 1 1 2.4-2.4l.1.1a1.7 1.7 0 0 0 2.9-1.2v-.3a1.7 1.7 0 1 1 3.4 0v.2a1.7 1.7 0 0 0 2.9 1.2l.1-.1a1.7 1.7 0 1 1 2.4 2.4l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.3a1.7 1.7 0 1 1 0 3.4h-.2a1.7 1.7 0 0 0-1.2 2.9z"/></>,
   };
@@ -95,6 +91,18 @@ export default function WhatsApp() {
   const [areSettingsLoaded, setAreSettingsLoaded] = useState(false);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingMessageText, setEditingMessageText] = useState("");
+  const [editPromptMessageId, setEditPromptMessageId] = useState<string | null>(null);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [voiceNoteError, setVoiceNoteError] = useState("");
+  const [chatMediaData, setChatMediaData] = useState("");
+  const [chatMediaType, setChatMediaType] = useState("");
+  const [chatMediaName, setChatMediaName] = useState("");
+  const [chatMediaError, setChatMediaError] = useState("");
+  const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false);
+  const [isContactPickerOpen, setIsContactPickerOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState<EmojiCategory>("Smileys");
   const [search, setSearch] = useState("");
@@ -107,6 +115,14 @@ export default function WhatsApp() {
   const [confirmDeleteContactId, setConfirmDeleteContactId] = useState<string | null>(null);
   const [activeCall, setActiveCall] = useState<"voice" | "video" | null>(null);
   const [formError, setFormError] = useState("");
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const cancelRecordingRef = useRef(false);
+  const documentInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try {
@@ -137,7 +153,10 @@ export default function WhatsApp() {
   }, []);
 
   useEffect(() => {
-    if (areSettingsLoaded) window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    if (areSettingsLoaded) {
+      window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      window.dispatchEvent(new Event("lingo:settings-change"));
+    }
   }, [settings, areSettingsLoaded]);
 
   useEffect(() => {
@@ -148,6 +167,22 @@ export default function WhatsApp() {
   useEffect(() => {
     if (isLoaded) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
   }, [chats, isLoaded]);
+
+  useEffect(() => {
+    if (!isRecordingVoice) return;
+    const timer = window.setInterval(() => setRecordingSeconds((seconds) => seconds + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, [isRecordingVoice]);
+
+  useEffect(() => {
+    if (recordingSeconds >= 120 && isRecordingVoice) mediaRecorderRef.current?.stop();
+  }, [recordingSeconds, isRecordingVoice]);
+
+  useEffect(() => () => {
+    cancelRecordingRef.current = true;
+    mediaRecorderRef.current?.stop();
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
 
   const selectedChat = chats.find((chat) => chat.id === selectedChatId);
   const filteredChats = useMemo(() => chats
@@ -235,14 +270,157 @@ export default function WhatsApp() {
     setEditingContactId(null);
   }
 
+  function startVoiceRecording() {
+    setVoiceNoteError("");
+    if (!selectedChatId) return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setVoiceNoteError("Voice recording isn’t supported in this browser.");
+      return;
+    }
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      mediaStreamRef.current = stream;
+      audioChunksRef.current = [];
+      cancelRecordingRef.current = false;
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : undefined;
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+      recorder.onerror = () => setVoiceNoteError("Recording failed. Please try again.");
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        stream.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+        mediaRecorderRef.current = null;
+        setIsRecordingVoice(false);
+        if (cancelRecordingRef.current) {
+          audioChunksRef.current = [];
+          return;
+        }
+        if (blob.size === 0) {
+          setVoiceNoteError("No audio was recorded. Please try again.");
+          return;
+        }
+        if (blob.size > 1_500_000) {
+          setVoiceNoteError("That recording is too large to save. Please record a shorter note.");
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          const audioData = String(reader.result ?? "");
+          const sentAt = new Date().toISOString();
+          const voiceMessage: Message = { id: crypto.randomUUID(), text: "", sender: "me", sentAt, audioData, audioType: blob.type };
+          setChats((current) => current.map((chat) => chat.id === selectedChatId ? { ...chat, time: "Now", unreadCount: 0, messages: [...chat.messages, voiceMessage] } : chat));
+          setVoiceNoteError("");
+        };
+        reader.onerror = () => setVoiceNoteError("Couldn’t save that recording. Please try again.");
+        reader.readAsDataURL(blob);
+      };
+      recorder.start();
+      setRecordingSeconds(0);
+      setIsRecordingVoice(true);
+    }).catch(() => setVoiceNoteError("Allow microphone access to record a voice note."));
+  }
+
+  function stopVoiceRecording(cancel = false) {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state === "inactive") return;
+    cancelRecordingRef.current = cancel;
+    recorder.stop();
+  }
+
+  function beginEditMessage(msg: Message) {
+    setEditingMessageId(msg.id);
+    setEditingMessageText(msg.text);
+  }
+
+  function saveEditedMessage(event: FormEvent<HTMLFormElement>, messageId: string) {
+    event.preventDefault();
+    const text = editingMessageText.trim();
+    if (!text || !selectedChatId) return;
+    setChats((current) => current.map((chat) => chat.id === selectedChatId ? {
+      ...chat,
+      messages: chat.messages.map((msg) => msg.id === messageId ? { ...msg, text, edited: true } : msg),
+    } : chat));
+    setEditingMessageId(null);
+    setEditingMessageText("");
+  }
+
+  function cancelEditMessage() {
+    setEditingMessageId(null);
+    setEditingMessageText("");
+  }
+
+  function deleteMessage(messageId: string) {
+    if (!selectedChatId) return;
+    setChats((current) => current.map((chat) => chat.id === selectedChatId
+      ? { ...chat, messages: chat.messages.filter((msg) => msg.id !== messageId) }
+      : chat));
+    setEditPromptMessageId(null);
+    if (editingMessageId === messageId) cancelEditMessage();
+  }
+
   function sendMessage(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     const text = message.trim();
-    if (!text || !selectedChatId) return;
+    if ((!text && !chatMediaData) || !selectedChatId) return;
     const sentAt = new Date().toISOString();
-    setChats((current) => current.map((chat) => chat.id === selectedChatId ? { ...chat, time: "Now", unreadCount: 0, messages: [...chat.messages, { id: crypto.randomUUID(), text, sender: "me", sentAt }] } : chat));
+    setChats((current) => current.map((chat) => chat.id === selectedChatId ? { ...chat, time: "Now", unreadCount: 0, messages: [...chat.messages, { id: crypto.randomUUID(), text, sender: "me", sentAt, ...(chatMediaData ? { mediaData: chatMediaData, mediaType: chatMediaType, mediaName: chatMediaName } : {}) }] } : chat));
     setMessage("");
+    clearChatMedia();
     setIsEmojiPickerOpen(false);
+  }
+
+  function clearChatMedia() {
+    setChatMediaData("");
+    setChatMediaType("");
+    setChatMediaName("");
+    setChatMediaError("");
+    if (documentInputRef.current) documentInputRef.current.value = "";
+    if (photoInputRef.current) photoInputRef.current.value = "";
+    if (videoInputRef.current) videoInputRef.current.value = "";
+    if (audioInputRef.current) audioInputRef.current.value = "";
+  }
+
+  function chooseChatMedia(file?: File, kind: "document" | "photo" | "video" | "audio" = "photo") {
+    if (!file) return;
+    const validType = kind === "photo" ? file.type.startsWith("image/")
+      : kind === "video" ? file.type.startsWith("video/")
+        : kind === "audio" ? file.type.startsWith("audio/")
+          : /^(application|text)\//.test(file.type) || /\.(pdf|docx?|xlsx?|pptx?|txt|csv|rtf|odt|ods|odp)$/i.test(file.name);
+    if (!validType) {
+      setChatMediaError(`Choose a valid ${kind} file.`);
+      return;
+    }
+    // Messages are stored in localStorage, so keep uploads small enough to avoid filling browser storage.
+    if (file.size > 1024 * 1024) {
+      setChatMediaError("Files must be 1 MB or smaller in this chat.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setChatMediaData(String(reader.result ?? ""));
+      setChatMediaType(file.type || "application/octet-stream");
+      setChatMediaName(file.name);
+      setChatMediaError("");
+    };
+    reader.onerror = () => setChatMediaError("Couldn’t load that file. Please try again.");
+    reader.readAsDataURL(file);
+  }
+
+  function shareContact(contact: Chat) {
+    if (!selectedChatId) return;
+    const sentAt = new Date().toISOString();
+    setChats((current) => current.map((chat) => chat.id === selectedChatId ? {
+      ...chat,
+      time: "Now",
+      unreadCount: 0,
+      messages: [...chat.messages, { id: crypto.randomUUID(), text: "", sender: "me", sentAt, sharedContact: { name: contact.name, phone: contact.phone } }],
+    } : chat));
+    setIsContactPickerOpen(false);
+    setIsAttachmentMenuOpen(false);
   }
 
   function openChat(chatId: string) {
@@ -261,12 +439,12 @@ export default function WhatsApp() {
   return (
     <main className={`messenger-shell ${settings.theme === "dark" ? "theme-dark" : ""}`}>
       <aside className="rail" aria-label="Main navigation">
-        <a className="brand-mark" href="#chats" aria-label="Home"><Image src="/images.png" alt="" width={48} height={43} priority /></a>
-        <button className={`rail-button ${activeSection === "chats" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("chats"); setMobileOpenChat(false); }} aria-label="Chats" title="Chats"><Icon name="chat"/></button>
-        <button className={`rail-button ${activeSection === "language" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("language"); setSearch(""); }} aria-label="Language exchange" title="Language exchange"><Icon name="language"/></button>
-        <a className="rail-button status-rail-link" href="/status" aria-label="Status" title="Status"><span aria-hidden="true">◉</span></a>
+        <a className="brand-mark" href="#chats" aria-label="Home"><Image src="/lingo-logo.jpg" alt="" width={42} height={42} priority /></a>
+        <button className={`rail-button ${activeSection === "chats" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("chats"); setMobileOpenChat(false); }} aria-label="Chats" title="Chats"><NavigationIcon name="chats"/></button>
+        <button className={`rail-button ${activeSection === "language" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("language"); setSearch(""); }} aria-label="Language exchange" title="Language exchange"><NavigationIcon name="language"/></button>
+        <a className="rail-button status-rail-link" href="/status" aria-label="Status" title="Status"><NavigationIcon name="status"/></a>
         <div className="rail-spacer" />
-        <button className={`rail-button ${activeSection === "settings" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("settings"); setMobileOpenChat(false); }} aria-label="Settings" title="Settings"><Icon name="settings"/></button>
+        <button className={`rail-button ${activeSection === "settings" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("settings"); setMobileOpenChat(false); }} aria-label="Settings" title="Settings"><NavigationIcon name="settings"/></button>
         <div className="rail-profile" aria-label="Your profile">Y</div>
       </aside>
 
@@ -287,7 +465,7 @@ export default function WhatsApp() {
               return <div className="conversation-entry" key={chat.id}>
                 <button className={`conversation ${selectedChatId === chat.id ? "conversation-active" : ""} ${chat.unreadCount ? "conversation-unread" : ""}`} onClick={() => openChat(chat.id)}>
                   <span className={`person-avatar person-avatar-${index % 6}`}>{getInitials(chat.name)}</span>
-                  <span className="conversation-copy"><span className="conversation-top"><strong>{chat.name}{chat.pinned && <Icon name="pin" size={12}/>}</strong><time>{formatChatTime(chat)}</time></span><span className="conversation-preview">{settings.showPreviews ? lastMessage ? <>{lastMessage.sender === "me" && <span className="read-check">✓✓ </span>}{lastMessage.text}</> : chat.about || "No messages yet" : "Open chat to view messages"}</span></span>
+                  <span className="conversation-copy"><span className="conversation-top"><strong>{chat.name}{chat.pinned && <Icon name="pin" size={12}/>}</strong><time>{formatChatTime(chat)}</time></span><span className="conversation-preview">{settings.showPreviews ? lastMessage ? <>{lastMessage.sender === "me" && <span className="read-check">✓✓ </span>}{lastMessage.sharedContact ? `Contact: ${lastMessage.sharedContact.name}` : lastMessage.mediaData ? lastMessage.mediaName || "Media" : lastMessage.audioData ? "Voice note" : lastMessage.text}</> : chat.about || "No messages yet" : "Open chat to view messages"}</span></span>
                   {chat.unreadCount > 0 && <span className="unread-count">{chat.unreadCount > 99 ? "99+" : chat.unreadCount}</span>}
                 </button>
                 <button className="conversation-menu-trigger" aria-label={`Chat options for ${chat.name}`} title="Chat options" onClick={() => setOpenMenuChatId((current) => current === chat.id ? null : chat.id)}><Icon name="more" size={17}/></button>
@@ -301,13 +479,29 @@ export default function WhatsApp() {
         <section className={`conversation-panel ${mobileOpenChat ? "conversation-panel-mobile-open" : ""}`} aria-label="Conversation">
           {selectedChat ? <>
             <header className="conversation-header"><button className="mobile-back" onClick={() => setMobileOpenChat(false)} aria-label="Back to contacts"><Icon name="back"/></button><div className="contact-summary"><span className="person-avatar person-avatar-large">{getInitials(selectedChat.name)}</span><span><strong>{selectedChat.name}</strong><small>{selectedChat.phone}</small></span></div><div className="conversation-call-actions"><button className="call-action-button" onClick={() => setActiveCall("voice")} aria-label={`Voice call ${selectedChat.name}`} title="Voice call"><Icon name="phone" size={17}/></button><button className="call-action-button" onClick={() => setActiveCall("video")} aria-label={`Video call ${selectedChat.name}`} title="Video call"><Icon name="video" size={18}/></button><button className="edit-contact-button" onClick={() => openEditContact(selectedChat.id)}>Edit</button></div></header>
-            <div className="chat-canvas"><div className="day-divider"><span>Today</span></div><div className="message-stack">
-              {selectedChat.messages.map((msg) => <div key={msg.id} className={`message-row ${msg.sender === "me" ? "message-row-me" : ""}`}><div className={`message-bubble ${msg.sender === "me" ? "message-bubble-me" : "message-bubble-them"}`}><p>{msg.text}</p><span className="message-meta">{msg.sender === "me" ? "You · " : ""}{new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(msg.sentAt))}<span className="message-check">{msg.sender === "me" ? "✓✓" : ""}</span></span></div></div>)}
+            <div className={`chat-canvas chat-theme-${settings.chatTheme}`}><div className="day-divider"><span>Today</span></div><div className="message-stack">
+              {selectedChat.messages.map((msg) => <div key={msg.id} className={`message-row ${msg.sender === "me" ? "message-row-me" : ""}`}><div className={`message-bubble ${msg.sender === "me" ? "message-bubble-me" : "message-bubble-them"}`}>
+                {msg.audioData && <div className="voice-note-content"><Icon name="mic" size={16}/><audio controls preload="metadata" src={msg.audioData} aria-label="Voice note playback" /></div>}
+                {msg.sharedContact && <div className="shared-contact-card"><span className="shared-contact-avatar">{getInitials(msg.sharedContact.name)}</span><span><strong>{msg.sharedContact.name}</strong><small>{msg.sharedContact.phone}</small></span></div>}
+                {msg.mediaData && !msg.mediaType?.startsWith("image/") && !msg.mediaType?.startsWith("video/") && !msg.mediaType?.startsWith("audio/") && <a className="shared-document-card" href={msg.mediaData} download={msg.mediaName || "shared-document"}><Icon name="attach" size={19}/><span><strong>{msg.mediaName || "Document"}</strong><small>Download file</small></span></a>}
+                {msg.mediaData && msg.mediaType?.startsWith("image/") && <img className="chat-message-media" src={msg.mediaData} alt={msg.mediaName || "Shared image"} />}
+                {msg.mediaData && msg.mediaType?.startsWith("video/") && <video className="chat-message-media" controls preload="metadata" src={msg.mediaData} aria-label={msg.mediaName || "Shared video"} />}
+                {msg.mediaData && msg.mediaType?.startsWith("audio/") && <div className="voice-note-content"><Icon name="attach" size={16}/><audio controls preload="metadata" src={msg.mediaData} aria-label={msg.mediaName || "Shared audio"} /></div>}
+                {msg.text && (editingMessageId === msg.id ? <form className="message-edit-form" onSubmit={(event) => saveEditedMessage(event, msg.id)}><textarea aria-label="Edit message text" maxLength={2000} autoFocus value={editingMessageText} onChange={(event) => setEditingMessageText(event.target.value)} /><div><button type="button" onClick={cancelEditMessage}>Cancel</button><button type="submit" disabled={!editingMessageText.trim()}>Save</button></div></form> : <p className={msg.sender === "me" ? "message-editable-text" : ""} title={msg.sender === "me" ? "Double-click to edit" : undefined} onDoubleClick={msg.sender === "me" ? () => setEditPromptMessageId(msg.id) : undefined}>{msg.text}</p>)}
+                <span className="message-meta">{msg.sender === "me" ? "You · " : ""}{new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(msg.sentAt))}{msg.edited && <span>Edited</span>}{msg.sender === "me" && <span className="message-check">✓✓</span>}</span>
+                {msg.sender === "me" && msg.text && editingMessageId !== msg.id && editPromptMessageId === msg.id && <div className="message-action-popover"><button type="button" onClick={() => { beginEditMessage(msg); setEditPromptMessageId(null); }}>Edit</button><button className="message-delete-action" type="button" onClick={() => deleteMessage(msg.id)}>Delete</button></div>}
+              </div></div>)}
               {selectedChat.messages.length === 0 && <div className="first-message"><span className="empty-spark">✳</span><p>This is the beginning of your conversation with <strong>{selectedChat.name}</strong>.</p><span>Send a message to say hello.</span></div>}
             </div></div>
             <form className="composer-wrap" onSubmit={sendMessage}>
+              <input ref={documentInputRef} className="chat-attachment-input" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.odt,.ods,.odp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.*,text/*" aria-label="Choose a document" onChange={(event) => chooseChatMedia(event.target.files?.[0], "document")} />
+              <input ref={photoInputRef} className="chat-attachment-input" type="file" accept="image/*" aria-label="Choose a photo" onChange={(event) => chooseChatMedia(event.target.files?.[0], "photo")} />
+              <input ref={videoInputRef} className="chat-attachment-input" type="file" accept="video/*" aria-label="Choose a video" onChange={(event) => chooseChatMedia(event.target.files?.[0], "video")} />
+              <input ref={audioInputRef} className="chat-attachment-input" type="file" accept="audio/*" aria-label="Choose an audio file" onChange={(event) => chooseChatMedia(event.target.files?.[0], "audio")} />
               {isEmojiPickerOpen && <div className="emoji-picker" role="dialog" aria-label="Choose an emoji"><div className="emoji-picker-heading"><strong>Choose an emoji</strong><button type="button" onClick={() => setIsEmojiPickerOpen(false)} aria-label="Close emoji picker"><Icon name="close" size={15}/></button></div><div className="emoji-category-tabs">{(Object.keys(EMOJI_CATEGORIES) as EmojiCategory[]).map((category) => <button type="button" key={category} className={emojiCategory === category ? "emoji-category-active" : ""} onClick={() => setEmojiCategory(category)}>{category}</button>)}</div><div className="emoji-grid">{EMOJI_CATEGORIES[emojiCategory].map((emoji, index) => <button type="button" key={`${emoji}-${index}`} aria-label={`Insert ${emoji}`} onClick={() => { setMessage((current) => `${current}${emoji}`); setIsEmojiPickerOpen(false); }}>{emoji}</button>)}</div></div>}
-              <div className="composer"><input aria-label="Type a message" placeholder="Write a message…" value={message} onChange={(event) => setMessage(event.target.value)}/><button className="composer-tool" type="button" aria-label="Choose an emoji" title="Choose an emoji" aria-expanded={isEmojiPickerOpen} onClick={() => setIsEmojiPickerOpen((current) => !current)}><Icon name="smile" size={19}/></button><button className="send-button" type="submit" aria-label="Send message" title="Send message" disabled={!message.trim()}><Icon name="send" size={18}/></button></div>
+              {isAttachmentMenuOpen && <div className="chat-attachment-menu" role="menu" aria-label="Add to message">{isContactPickerOpen ? <><div className="chat-attachment-menu-heading"><button type="button" onClick={() => setIsContactPickerOpen(false)}>‹ Back</button><strong>Share a contact</strong></div><div className="chat-contact-picker">{chats.filter((contact) => contact.id !== selectedChatId).map((contact) => <button type="button" key={contact.id} role="menuitem" onClick={() => shareContact(contact)}><span className="shared-contact-avatar">{getInitials(contact.name)}</span><span><strong>{contact.name}</strong><small>{contact.phone}</small></span></button>)}{chats.filter((contact) => contact.id !== selectedChatId).length === 0 && <p>Add another saved contact before sharing one.</p>}</div></> : <><button type="button" role="menuitem" onClick={() => { setIsAttachmentMenuOpen(false); documentInputRef.current?.click(); }}>▤ <span><strong>Documents</strong><small>PDF, Word, spreadsheets, and more</small></span></button><button type="button" role="menuitem" onClick={() => { setIsAttachmentMenuOpen(false); photoInputRef.current?.click(); }}>▧ <span><strong>Photos</strong><small>Choose an image</small></span></button><button type="button" role="menuitem" onClick={() => { setIsAttachmentMenuOpen(false); videoInputRef.current?.click(); }}>▹ <span><strong>Videos</strong><small>Choose a video</small></span></button><button type="button" role="menuitem" onClick={() => { setIsAttachmentMenuOpen(false); audioInputRef.current?.click(); }}>♫ <span><strong>Audio</strong><small>Choose an audio file</small></span></button><button type="button" role="menuitem" onClick={() => setIsContactPickerOpen(true)}>♙ <span><strong>Contacts</strong><small>Share a saved contact</small></span></button></>}</div>}
+              {chatMediaData && <div className="chat-media-preview">{chatMediaType.startsWith("image/") ? <img src={chatMediaData} alt="Attachment preview"/> : chatMediaType.startsWith("video/") ? <video src={chatMediaData} controls/> : <span className={chatMediaType.startsWith("audio/") ? "chat-media-audio" : "chat-media-document"}><Icon name="attach" size={17}/>{chatMediaName}</span>}<span className="chat-media-name">{chatMediaName}</span><button type="button" className="chat-media-remove" onClick={clearChatMedia} aria-label="Remove attachment">Remove</button></div>}
+              <div className={`composer ${isRecordingVoice ? "composer-recording" : ""}`}><input aria-label="Type a message" placeholder={isRecordingVoice ? "Recording voice note…" : "Write a message…"} value={message} disabled={isRecordingVoice} onChange={(event) => setMessage(event.target.value)}/>{isRecordingVoice ? <><span className="recording-timer">● {Math.floor(recordingSeconds / 60).toString().padStart(2, "0")}:{(recordingSeconds % 60).toString().padStart(2, "0")}</span><button className="voice-note-cancel" type="button" aria-label="Cancel recording" title="Cancel recording" onClick={() => stopVoiceRecording(true)}><Icon name="close" size={17}/></button><button className="voice-note-button voice-note-recording" type="button" aria-label="Stop and send voice note" title="Stop and send voice note" onClick={() => stopVoiceRecording()}><Icon name="stop" size={17}/></button></> : <><button className="composer-tool" type="button" aria-label="Add attachment" title="Add attachment" aria-expanded={isAttachmentMenuOpen} onClick={() => { setIsAttachmentMenuOpen((current) => !current); setIsContactPickerOpen(false); }}><Icon name="attach" size={18}/></button><button className="composer-tool" type="button" aria-label="Choose an emoji" title="Choose an emoji" aria-expanded={isEmojiPickerOpen} onClick={() => setIsEmojiPickerOpen((current) => !current)}><Icon name="smile" size={19}/></button><button className="voice-note-button" type="button" aria-label="Record voice note" title="Record voice note" onClick={startVoiceRecording}><Icon name="mic" size={18}/></button><button className="send-button" type="submit" aria-label="Send message" title="Send message" disabled={!message.trim() && !chatMediaData}><Icon name="send" size={18}/></button></>}</div>{(voiceNoteError || chatMediaError) && <p className="voice-note-error" role="alert">{voiceNoteError || chatMediaError}</p>}
             </form>
           </> : <div className="empty-chat"><span className="empty-spark">✳</span><h2>Start a conversation</h2><p>Choose a contact or add someone new.</p><button className="partner-message" onClick={openAddContact}><Icon name="plus" size={16}/> Add a contact</button></div>}
         </section>
@@ -316,7 +510,64 @@ export default function WhatsApp() {
         <div className="language-tools"><label className="search-field"><Icon name="search" size={18}/><input aria-label="Search language partners" placeholder="Search by name or language" value={search} onChange={(event) => setSearch(event.target.value)}/></label><button className="language-preference" onClick={openAddContact}><Icon name="language" size={17}/> Add your languages</button></div>
         <div className="language-section-label"><span>LANGUAGE PARTNERS</span><span>{languagePartners.length.toString().padStart(2, "0")}</span></div>
         {languagePartners.length ? <div className="partner-grid">{languagePartners.map((partner, index) => <article className="partner-card" key={partner.id}><div className="partner-card-top"><span className={`person-avatar person-avatar-${index % 6} partner-avatar`}>{getInitials(partner.name)}</span><span className="partner-status">{partner.nativeLanguage || "Language not set"}</span></div><h2>{partner.name}</h2><p className="partner-level">{partner.phone}</p><div className="partner-languages"><span><small>Speaks</small><strong>{partner.nativeLanguage || "Not set"}</strong></span><span className="partner-arrow">↔</span><span><small>Learning</small><strong>{partner.learningLanguage}</strong></span></div><button className="partner-message" onClick={() => openChat(partner.id)}><Icon name="chat" size={15}/> Open chat</button></article>)}</div> : <div className="empty-language"><span className="empty-spark"><Icon name="language" size={25}/></span><h2>No language partners yet</h2><p>Add a contact and include the language they speak and the one they are learning. They will appear here.</p><button className="partner-message" onClick={() => { openAddContact(); }}><Icon name="plus" size={16}/> Add a language partner</button></div>}
-      </section> : <section className="settings-section"><header className="settings-heading"><h1>Settings<span className="heading-period">.</span></h1><p>Your preferences are saved in this browser.</p></header><div className="settings-card"><div className="settings-card-heading"><div><h2>Appearance</h2><p>Choose the look that feels right for you.</p></div><Icon name="settings" size={19}/></div><div className="theme-options"><button className={`theme-option ${settings.theme === "light" ? "theme-option-active" : ""}`} onClick={() => setSettings((current) => ({ ...current, theme: "light" }))}><span className="theme-preview theme-preview-light"><i/><i/></span><span>Light</span>{settings.theme === "light" && <span className="preference-check">✓</span>}</button><button className={`theme-option ${settings.theme === "dark" ? "theme-option-active" : ""}`} onClick={() => setSettings((current) => ({ ...current, theme: "dark" }))}><span className="theme-preview theme-preview-dark"><i/><i/></span><span>Dark</span>{settings.theme === "dark" && <span className="preference-check">✓</span>}</button></div></div><div className="settings-card"><div className="settings-card-heading"><div><h2>Chat list</h2><p>Adjust how conversations appear.</p></div><Icon name="chat" size={19}/></div><button className="setting-toggle-row" role="switch" aria-checked={settings.compactChats} onClick={() => setSettings((current) => ({ ...current, compactChats: !current.compactChats }))}><span><strong>Compact layout</strong><small>Show more chats in less space.</small></span><i className={`toggle-track ${settings.compactChats ? "toggle-track-on" : ""}`}><b/></i></button><button className="setting-toggle-row" role="switch" aria-checked={settings.showPreviews} onClick={() => setSettings((current) => ({ ...current, showPreviews: !current.showPreviews }))}><span><strong>Message previews</strong><small>Show the latest message in the chat list.</small></span><i className={`toggle-track ${settings.showPreviews ? "toggle-track-on" : ""}`}><b/></i></button></div></section>}
+      </section> : <section className="settings-section">
+        <header className="settings-heading">
+          <h1>Settings<span className="heading-period">.</span></h1>
+          <p>Your preferences are saved in this browser.</p>
+        </header>
+        <div className="settings-card">
+          <div className="settings-card-heading">
+            <div><h2>Appearance</h2><p>Choose the look that feels right for you.</p></div>
+            <Icon name="settings" size={19}/>
+          </div>
+          <div className="theme-options">
+            <button className={`theme-option ${settings.theme === "light" ? "theme-option-active" : ""}`} onClick={() => setSettings((current) => ({ ...current, theme: "light" }))}>
+              <span className="theme-preview theme-preview-light"><i/><i/></span><span>Light</span>
+              {settings.theme === "light" && <span className="preference-check">✓</span>}
+            </button>
+            <button className={`theme-option ${settings.theme === "dark" ? "theme-option-active" : ""}`} onClick={() => setSettings((current) => ({ ...current, theme: "dark" }))}>
+              <span className="theme-preview theme-preview-dark"><i/><i/></span><span>Dark</span>
+              {settings.theme === "dark" && <span className="preference-check">✓</span>}
+            </button>
+          </div>
+        </div>
+        <div className="settings-card">
+          <div className="settings-card-heading">
+            <div><h2>Chat themes</h2><p>Choose colors for the conversation background and message bubbles.</p></div>
+            <Icon name="chat" size={19}/>
+          </div>
+          <div className="chat-theme-options">
+            {(["classic", "sage", "ocean", "sunset", "lavender", "rose", "mint", "slate", "amber", "teal", "sky", "pink", "yellow"] as ChatTheme[]).map((chatTheme) => (
+              <button
+                key={chatTheme}
+                className={`chat-theme-option ${settings.chatTheme === chatTheme ? "chat-theme-option-active" : ""}`}
+                aria-pressed={settings.chatTheme === chatTheme}
+                onClick={() => setSettings((current) => ({ ...current, chatTheme }))}
+              >
+                <span className={`chat-theme-preview chat-theme-preview-${chatTheme}`}>
+                  <i/><i/>
+                </span>
+                <span>{chatTheme === "sky" ? "Sky blue" : chatTheme === "yellow" ? "Light yellow" : chatTheme.charAt(0).toUpperCase() + chatTheme.slice(1)}</span>
+                {settings.chatTheme === chatTheme && <span className="preference-check">✓</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="settings-card">
+          <div className="settings-card-heading">
+            <div><h2>Chat list</h2><p>Adjust how conversations appear.</p></div>
+            <Icon name="chat" size={19}/>
+          </div>
+          <button className="setting-toggle-row" role="switch" aria-checked={settings.compactChats} onClick={() => setSettings((current) => ({ ...current, compactChats: !current.compactChats }))}>
+            <span><strong>Compact layout</strong><small>Show more chats in less space.</small></span>
+            <i className={`toggle-track ${settings.compactChats ? "toggle-track-on" : ""}`}><b/></i>
+          </button>
+          <button className="setting-toggle-row" role="switch" aria-checked={settings.showPreviews} onClick={() => setSettings((current) => ({ ...current, showPreviews: !current.showPreviews }))}>
+            <span><strong>Message previews</strong><small>Show the latest message in the chat list.</small></span>
+            <i className={`toggle-track ${settings.showPreviews ? "toggle-track-on" : ""}`}><b/></i>
+          </button>
+        </div>
+      </section>}
       </div>
 
       {isContactModalOpen && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) closeContactModal(); }}>

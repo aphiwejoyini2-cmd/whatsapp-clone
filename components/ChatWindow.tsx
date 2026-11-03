@@ -23,7 +23,6 @@ if (message.trim() === "") {
 return;
 }
 
-```
 const newMessage = {
   id: Date.now(),
   text: message,
@@ -36,8 +35,6 @@ setMessages((currentMessages) => [
 ]);
 
 setMessage("");
-```
-
 }
 
 return (
@@ -58,7 +55,6 @@ borderBottom: "1px solid #ddd",
 }}
 > <strong>John</strong> </header>
 
-```
   <div
     style={{
       flex: 1,
