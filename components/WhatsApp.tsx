@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import NavigationIcon from "@/components/NavigationIcon";
 import { EMOJI_CATEGORIES, type EmojiCategory } from "@/lib/emojis";
 
@@ -13,6 +14,7 @@ type Chat = {
   id: string;
   name: string;
   phone: string;
+  email?: string;
   username?: string;
   countryCode?: string;
   mobile?: string;
@@ -85,6 +87,7 @@ function formatChatTime(chat: Chat) {
 }
 
 export default function WhatsApp() {
+  const router = useRouter();
   const [chats, setChats] = useState<Chat[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
@@ -106,6 +109,12 @@ export default function WhatsApp() {
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState<EmojiCategory>("Smileys");
   const [search, setSearch] = useState("");
+  const [practiceWord, setPracticeWord] = useState<string | null>(null);
+  const [savedPracticeWords, setSavedPracticeWords] = useState<string[]>([]);
+  const [practiceText, setPracticeText] = useState("¿Quieres quedar para tomar un café mañana?");
+  const [practiceLanguage, setPracticeLanguage] = useState("es");
+  const [practiceMeaning, setPracticeMeaning] = useState("");
+  const [practiceLookupBusy, setPracticeLookupBusy] = useState(false);
   const [activeSection, setActiveSection] = useState<"chats" | "language" | "settings">("chats");
   const [mobileOpenChat, setMobileOpenChat] = useState(false);
   const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "pinned">("all");
@@ -141,6 +150,35 @@ export default function WhatsApp() {
     }
     setIsLoaded(true);
   }, []);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("lingo:vocabulary:v1");
+      if (saved) setSavedPracticeWords(JSON.parse(saved));
+    } catch { window.localStorage.removeItem("lingo:vocabulary:v1"); }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("lingo:vocabulary:v1", JSON.stringify(savedPracticeWords));
+  }, [savedPracticeWords]);
+
+  useEffect(() => {
+    if (!practiceWord) return;
+    const controller = new AbortController();
+    setPracticeLookupBusy(true);
+    setPracticeMeaning("");
+    fetch(`https://api.dictionaryapi.dev/api/v2/entries/${practiceLanguage}/${encodeURIComponent(practiceWord)}`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("No definition found for this word.");
+        const entries = await response.json();
+        const definition = entries[0]?.meanings?.[0]?.definitions?.[0]?.definition;
+        if (!definition) throw new Error("No definition found for this word.");
+        setPracticeMeaning(definition);
+      })
+      .catch((error: unknown) => { if (error instanceof Error && error.name !== "AbortError") setPracticeMeaning(error.message); })
+      .finally(() => setPracticeLookupBusy(false));
+    return () => controller.abort();
+  }, [practiceWord, practiceLanguage]);
 
   useEffect(() => {
     try {
@@ -186,7 +224,7 @@ export default function WhatsApp() {
 
   const selectedChat = chats.find((chat) => chat.id === selectedChatId);
   const filteredChats = useMemo(() => chats
-    .filter((chat) => `${chat.name} ${chat.phone}`.toLowerCase().includes(search.toLowerCase()))
+    .filter((chat) => `${chat.name} ${chat.email ?? ""} ${chat.phone}`.toLowerCase().includes(search.toLowerCase()))
     .filter((chat) => activeFilter === "all" || (activeFilter === "unread" ? chat.unreadCount > 0 : chat.pinned))
     .sort((a, b) => Number(b.pinned) - Number(a.pinned) || new Date(getLastMessage(b)?.sentAt ?? b.createdAt).getTime() - new Date(getLastMessage(a)?.sentAt ?? a.createdAt).getTime()),
   [chats, search, activeFilter]);
@@ -222,34 +260,42 @@ export default function WhatsApp() {
     const firstName = String(formData.get("firstName") ?? "").trim();
     const lastName = String(formData.get("lastName") ?? "").trim();
     const name = [firstName, lastName].filter(Boolean).join(" ");
+    const email = String(formData.get("email") ?? "").trim().toLowerCase();
     const countryCode = String(formData.get("countryCode") ?? "+27");
-    const mobile = String(formData.get("mobile") ?? "").trim();
-    const phone = `${countryCode} ${mobile}`.trim();
+    const mobile = String(formData.get("mobile") ?? "").trim().replace(/\D/g, "").replace(/^0+/, "");
+    const phone = mobile ? `${countryCode} ${mobile}`.trim() : "";
     const digits = phone.replace(/\D/g, "");
-    if (!firstName || digits.length < 7) {
-      setFormError("Enter a first name and a valid mobile number with at least 7 digits.");
+    if (!firstName || (!editingContactId && !email) || (mobile && digits.length < 7)) {
+      setFormError("Enter a name and the email they use for this app. If you add a phone number, check that it has at least 7 digits.");
       return;
     }
-    if (chats.some((chat) => chat.id !== editingContactId && chat.phone.replace(/\D/g, "") === digits)) {
+    if (email && chats.some((chat) => chat.id !== editingContactId && chat.email?.toLowerCase() === email)) {
+      setFormError("A contact with this email already exists.");
+      return;
+    }
+    if (digits && chats.some((chat) => chat.id !== editingContactId && chat.phone.replace(/\D/g, "") === digits)) {
       setFormError("A contact with this phone number already exists.");
       return;
     }
     const contactFields = {
       name,
       phone,
+      email,
       username: String(formData.get("username") ?? "").trim().replace(/^@/, ""),
       countryCode,
       mobile,
       about: String(formData.get("about") ?? "").trim(),
       nativeLanguage: String(formData.get("nativeLanguage") ?? ""),
       learningLanguage: String(formData.get("learningLanguage") ?? ""),
-      syncToPhone: false,
+      syncToPhone: false, 
     };
     if (editingContactId) {
       setChats((current) => current.map((chat) => chat.id === editingContactId ? { ...chat, ...contactFields } : chat));
     } else {
       const contact: Chat = { id: crypto.randomUUID(), ...contactFields, time: "New contact", createdAt: new Date().toISOString(), pinned: false, unreadCount: 0, messages: [] };
-      setChats((current) => [contact, ...current]);
+      const nextChats = [contact, ...chats];
+      setChats(nextChats);
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextChats));
       setSelectedChatId(contact.id);
       setActiveSection("chats");
       setMobileOpenChat(true);
@@ -257,6 +303,7 @@ export default function WhatsApp() {
     setIsContactModalOpen(false);
     setFormError("");
     setSearch("");
+    if (!editingContactId) router.push(`/messages?email=${encodeURIComponent(email)}`);
   }
 
   function deleteContact(contactId: string) {
@@ -478,7 +525,7 @@ export default function WhatsApp() {
 
         <section className={`conversation-panel ${mobileOpenChat ? "conversation-panel-mobile-open" : ""}`} aria-label="Conversation">
           {selectedChat ? <>
-            <header className="conversation-header"><button className="mobile-back" onClick={() => setMobileOpenChat(false)} aria-label="Back to contacts"><Icon name="back"/></button><div className="contact-summary"><span className="person-avatar person-avatar-large">{getInitials(selectedChat.name)}</span><span><strong>{selectedChat.name}</strong><small>{selectedChat.phone}</small></span></div><div className="conversation-call-actions"><button className="call-action-button" onClick={() => setActiveCall("voice")} aria-label={`Voice call ${selectedChat.name}`} title="Voice call"><Icon name="phone" size={17}/></button><button className="call-action-button" onClick={() => setActiveCall("video")} aria-label={`Video call ${selectedChat.name}`} title="Video call"><Icon name="video" size={18}/></button><button className="edit-contact-button" onClick={() => openEditContact(selectedChat.id)}>Edit</button></div></header>
+            <header className="conversation-header"><button className="mobile-back" onClick={() => setMobileOpenChat(false)} aria-label="Back to contacts"><Icon name="back"/></button><div className="contact-summary"><span className="person-avatar person-avatar-large">{getInitials(selectedChat.name)}</span><span><strong>{selectedChat.name}</strong><small>{selectedChat.email || selectedChat.phone}</small></span></div><div className="conversation-call-actions"><button className="call-action-button" onClick={() => setActiveCall("voice")} aria-label={`Voice call ${selectedChat.name}`} title="Voice call"><Icon name="phone" size={17}/></button><button className="call-action-button" onClick={() => setActiveCall("video")} aria-label={`Video call ${selectedChat.name}`} title="Video call"><Icon name="video" size={18}/></button><button className="edit-contact-button" onClick={() => openEditContact(selectedChat.id)}>Edit</button></div></header>
             <div className={`chat-canvas chat-theme-${settings.chatTheme}`}><div className="day-divider"><span>Today</span></div><div className="message-stack">
               {selectedChat.messages.map((msg) => <div key={msg.id} className={`message-row ${msg.sender === "me" ? "message-row-me" : ""}`}><div className={`message-bubble ${msg.sender === "me" ? "message-bubble-me" : "message-bubble-them"}`}>
                 {msg.audioData && <div className="voice-note-content"><Icon name="mic" size={16}/><audio controls preload="metadata" src={msg.audioData} aria-label="Voice note playback" /></div>}
@@ -508,6 +555,7 @@ export default function WhatsApp() {
       </> : activeSection === "language" ? <section className="language-section">
         <header className="language-heading"><span className="eyebrow">MEET SOMEONE NEW</span><h1>Language exchange<span className="heading-period">.</span></h1><p>Practise a language through real conversations. Find a partner who is learning yours, too.</p></header>
         <div className="language-tools"><label className="search-field"><Icon name="search" size={18}/><input aria-label="Search language partners" placeholder="Search by name or language" value={search} onChange={(event) => setSearch(event.target.value)}/></label><button className="language-preference" onClick={openAddContact}><Icon name="language" size={17}/> Add your languages</button></div>
+        <section className="practice-card" aria-labelledby="practice-title"><div className="practice-intro"><span className="eyebrow">PRACTICE STUDIO</span><h2 id="practice-title">Make a real phrase your next lesson.</h2><p>Choose the language, paste or write a phrase, then tap any word to look it up and save it.</p><label className="practice-select-label">I’m practising<select value={practiceLanguage} onChange={(event) => { setPracticeLanguage(event.target.value); setPracticeWord(null); }}><option value="es">Spanish</option><option value="en">English</option><option value="fr">French</option><option value="de">German</option><option value="pt">Portuguese</option><option value="it">Italian</option></select></label></div><div className="practice-demo"><div className="practice-demo-label"><span>YOUR PRACTICE PHRASE</span><span>Tap a word below</span></div><textarea className="practice-input" aria-label="Practice phrase" value={practiceText} onChange={(event) => { setPracticeText(event.target.value); setPracticeWord(null); }} placeholder="Write or paste a phrase…"/><div className="practice-token-row">{practiceText.match(/[\p{L}\p{M}'’-]+|[^\p{L}\p{M}'’-]+/gu)?.map((token, index) => /^[\p{L}\p{M}]/u.test(token) ? <button key={`${token}-${index}`} className={`practice-word ${practiceWord === token.replace(/[.,!?;:]+$/u, "") ? "practice-word-active" : ""}`} onClick={() => setPracticeWord(token.replace(/[.,!?;:]+$/u, ""))}>{token}</button> : <span key={`space-${index}`}>{token}</span>)}</div>{practiceWord && <div className="practice-definition"><div><small>{practiceLanguage.toUpperCase()} <span>→</span> ENGLISH</small><strong>{practiceWord}</strong><span>{practiceLookupBusy ? "Looking up definition…" : practiceMeaning || "No definition available."}</span></div><div className="practice-actions"><button aria-label="Play pronunciation" onClick={() => { if ("speechSynthesis" in window) { window.speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(practiceWord); utterance.lang = practiceLanguage; window.speechSynthesis.speak(utterance); } }}>▶</button><button disabled={savedPracticeWords.includes(practiceWord)} onClick={() => setSavedPracticeWords((words) => words.includes(practiceWord) ? words : [...words, practiceWord])}>{savedPracticeWords.includes(practiceWord) ? "Saved ✓" : "+ Save word"}</button></div></div>}<div className="practice-demo-foot"><span>Definitions from Free Dictionary API · pronunciation from your browser</span><span className="saved-word-count">{savedPracticeWords.length} saved word{savedPracticeWords.length === 1 ? "" : "s"}{savedPracticeWords.length > 0 ? ` · ${savedPracticeWords.join(", ")}` : ""}</span></div></div></section>
         <div className="language-section-label"><span>LANGUAGE PARTNERS</span><span>{languagePartners.length.toString().padStart(2, "0")}</span></div>
         {languagePartners.length ? <div className="partner-grid">{languagePartners.map((partner, index) => <article className="partner-card" key={partner.id}><div className="partner-card-top"><span className={`person-avatar person-avatar-${index % 6} partner-avatar`}>{getInitials(partner.name)}</span><span className="partner-status">{partner.nativeLanguage || "Language not set"}</span></div><h2>{partner.name}</h2><p className="partner-level">{partner.phone}</p><div className="partner-languages"><span><small>Speaks</small><strong>{partner.nativeLanguage || "Not set"}</strong></span><span className="partner-arrow">↔</span><span><small>Learning</small><strong>{partner.learningLanguage}</strong></span></div><button className="partner-message" onClick={() => openChat(partner.id)}><Icon name="chat" size={15}/> Open chat</button></article>)}</div> : <div className="empty-language"><span className="empty-spark"><Icon name="language" size={25}/></span><h2>No language partners yet</h2><p>Add a contact and include the language they speak and the one they are learning. They will appear here.</p><button className="partner-message" onClick={() => { openAddContact(); }}><Icon name="plus" size={16}/> Add a language partner</button></div>}
       </section> : <section className="settings-section">
@@ -572,11 +620,14 @@ export default function WhatsApp() {
 
       {isContactModalOpen && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) closeContactModal(); }}>
         <section className="contact-modal edit-contact-modal" role="dialog" aria-modal="true" aria-labelledby="contact-modal-title">
-          <header className="contact-modal-heading"><button className="modal-cancel-link" onClick={closeContactModal}>Cancel</button><h2 id="contact-modal-title">{editingContact ? "Edit contact" : "Add contact"}</h2><button className="modal-done-link" type="submit" form="contact-details-form">Done</button></header>
+          <header className="contact-modal-heading"><button className="modal-cancel-link" onClick={closeContactModal}>Cancel</button><h2 id="contact-modal-title">{editingContact ? "Edit contact" : "Add contact"}</h2><button className="modal-done-link" type="submit" form="contact-details-form">{editingContact ? "Save" : "Save & message"}</button></header>
           <form id="contact-details-form" className="contact-form" onSubmit={saveContact}>
+            {!editingContact && <p className="contact-save-note">Enter the email they use to sign in. They need an account with a confirmed email. The phone number is optional contact information.</p>}
             <div className="contact-name-fields"><label>First name<input autoFocus name="firstName" placeholder="First name" required maxLength={60} defaultValue={editingNameParts[0] ?? ""}/></label><label>Last name<input name="lastName" placeholder="Last name" maxLength={60} defaultValue={editingNameParts.slice(1).join(" ")}/></label></div>
+            <label className="contact-username-label">Account email<input name="email" type="email" placeholder="friend@example.com" required={!editingContact} defaultValue={editingContact?.email ?? ""}/></label>
             <label className="contact-username-label">Username<input name="username" placeholder="Username" maxLength={30} defaultValue={editingContact?.username ?? ""}/></label>
-            <div className="contact-phone-fields"><label>Country<select name="countryCode" defaultValue={editingCountryCode}>{PHONE_COUNTRIES.map((country) => <option value={country.code} key={country.code}>{country.name} ({country.code})</option>)}</select></label><label>Mobile<input name="mobile" type="tel" placeholder="Mobile number" required minLength={7} autoComplete="tel-national" defaultValue={editingMobile}/></label></div>
+            {!editingContact && <p>Use the email they sign in with. They need an account and a confirmed email. Phone is optional.</p>}
+            <div className="contact-phone-fields"><label>Country<select name="countryCode" defaultValue={editingCountryCode}>{PHONE_COUNTRIES.map((country) => <option value={country.code} key={country.code}>{country.name} ({country.code})</option>)}</select></label><label>Mobile (optional)<input name="mobile" type="tel" placeholder="Mobile number" minLength={7} autoComplete="tel-national" defaultValue={editingMobile}/></label></div>
             <div className="sync-phone-row"><span><strong>Sync contact to phone</strong><small>Device contact sync is not available in the browser.</small></span><input type="checkbox" role="switch" aria-label="Sync contact to phone" disabled checked={false} readOnly/></div>
             <details className="language-details" open={Boolean(editingContact?.nativeLanguage || editingContact?.learningLanguage)}><summary>Language exchange details <span>Optional</span></summary><div className="language-selects"><label>Speaks<select name="nativeLanguage" defaultValue={editingContact?.nativeLanguage ?? ""}><option value="">Select a language</option>{LANGUAGES.map((language) => <option key={language}>{language}</option>)}</select></label><label>Learning<select name="learningLanguage" defaultValue={editingContact?.learningLanguage ?? ""}><option value="">Select a language</option>{LANGUAGES.map((language) => <option key={language}>{language}</option>)}</select></label></div></details>
             {formError && <p className="form-error" role="alert">{formError}</p>}
