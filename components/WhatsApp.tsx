@@ -1,11 +1,12 @@
 "use client";
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import NavigationIcon from "@/components/NavigationIcon";
 import { EMOJI_CATEGORIES, type EmojiCategory } from "@/lib/emojis";
+import { createClient } from "@/lib/supabase/client";
+import CallWindow from "@/components/calls/CallWindow";
 
 type Message = { id: string; text: string; sender: "me" | "them"; sentAt: string; audioData?: string; audioType?: string; mediaData?: string; mediaType?: string; mediaName?: string; sharedContact?: { name: string; phone: string }; edited?: boolean };
 type ChatTheme = "classic" | "sage" | "ocean" | "sunset" | "lavender" | "rose" | "mint" | "slate" | "amber" | "teal" | "sky" | "pink" | "yellow";
@@ -92,6 +93,9 @@ export default function WhatsApp() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [areSettingsLoaded, setAreSettingsLoaded] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profileMessage, setProfileMessage] = useState("");
+  const [profileUploading, setProfileUploading] = useState(false);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -483,6 +487,38 @@ export default function WhatsApp() {
     setOpenMenuChatId(null);
   }
 
+  useEffect(() => {
+    const supabase = createClient();
+    void supabase.auth.getUser().then(({ data }) => {
+      const avatar = data.user?.user_metadata?.avatar_url;
+      if (typeof avatar === "string") setProfileImage(avatar);
+    });
+  }, []);
+
+  async function uploadProfilePicture(file?: File) {
+    if (!file) return;
+    setProfileMessage("");
+    if (!file.type.startsWith("image/")) { setProfileMessage("Choose an image file."); return; }
+    if (file.size > 5 * 1024 * 1024) { setProfileMessage("Choose an image smaller than 5 MB."); return; }
+    setProfileUploading(true);
+    const supabase = createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (!user || authError) { setProfileMessage("Sign in before uploading a profile picture."); setProfileUploading(false); return; }
+    const path = `${user.id}/profile`;
+    const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
+    if (uploadError) {
+      setProfileMessage(uploadError.message.includes("Bucket not found") ? "The Supabase Storage bucket named avatars has not been created yet." : uploadError.message);
+      setProfileUploading(false);
+      return;
+    }
+    const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
+    const avatarUrl = `${publicUrl}?updated=${Date.now()}`;
+    const { error: updateError } = await supabase.auth.updateUser({ data: { avatar_url: avatarUrl } });
+    if (updateError) setProfileMessage(updateError.message);
+    else { setProfileImage(avatarUrl); setProfileMessage("Profile picture updated."); }
+    setProfileUploading(false);
+  }
+
   return (
     <main className={`messenger-shell ${settings.theme === "dark" ? "theme-dark" : ""}`}>
       <aside className="rail" aria-label="Main navigation">
@@ -492,7 +528,7 @@ export default function WhatsApp() {
         <a className="rail-button status-rail-link" href="/status" aria-label="Status" title="Status"><NavigationIcon name="status"/></a>
         <div className="rail-spacer" />
         <button className={`rail-button ${activeSection === "settings" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("settings"); setMobileOpenChat(false); }} aria-label="Settings" title="Settings"><NavigationIcon name="settings"/></button>
-        <div className="rail-profile" aria-label="Your profile">Y</div>
+        <div className="rail-profile" aria-label="Your profile">{profileImage ? <img src={profileImage} alt=""/> : "Y"}</div>
       </aside>
 
       <div className={`dashboard-content ${settings.theme === "dark" ? "theme-dark" : ""} ${settings.compactChats ? "compact-chats" : ""}`}>
@@ -525,7 +561,7 @@ export default function WhatsApp() {
 
         <section className={`conversation-panel ${mobileOpenChat ? "conversation-panel-mobile-open" : ""}`} aria-label="Conversation">
           {selectedChat ? <>
-            <header className="conversation-header"><button className="mobile-back" onClick={() => setMobileOpenChat(false)} aria-label="Back to contacts"><Icon name="back"/></button><div className="contact-summary"><span className="person-avatar person-avatar-large">{getInitials(selectedChat.name)}</span><span><strong>{selectedChat.name}</strong><small>{selectedChat.email || selectedChat.phone}</small></span></div><div className="conversation-call-actions"><button className="call-action-button" onClick={() => setActiveCall("voice")} aria-label={`Voice call ${selectedChat.name}`} title="Voice call"><Icon name="phone" size={17}/></button><button className="call-action-button" onClick={() => setActiveCall("video")} aria-label={`Video call ${selectedChat.name}`} title="Video call"><Icon name="video" size={18}/></button><button className="edit-contact-button" onClick={() => openEditContact(selectedChat.id)}>Edit</button></div></header>
+            <header className="conversation-header"><button className="mobile-back" onClick={() => setMobileOpenChat(false)} aria-label="Back to contacts"><Icon name="back"/></button><div className="contact-summary"><span className="person-avatar person-avatar-large">{getInitials(selectedChat.name)}</span><span><strong>{selectedChat.name}</strong><small>{selectedChat.phone}</small></span></div><div className="conversation-call-actions"><button className="call-action-button" onClick={() => setActiveCall("voice")} aria-label={`Voice call ${selectedChat.name}`} title="Voice call"><Icon name="phone" size={17}/></button><button className="call-action-button" onClick={() => setActiveCall("video")} aria-label={`Video call ${selectedChat.name}`} title="Video call"><Icon name="video" size={18}/></button><button className="edit-contact-button" onClick={() => openEditContact(selectedChat.id)}>Edit</button></div></header>
             <div className={`chat-canvas chat-theme-${settings.chatTheme}`}><div className="day-divider"><span>Today</span></div><div className="message-stack">
               {selectedChat.messages.map((msg) => <div key={msg.id} className={`message-row ${msg.sender === "me" ? "message-row-me" : ""}`}><div className={`message-bubble ${msg.sender === "me" ? "message-bubble-me" : "message-bubble-them"}`}>
                 {msg.audioData && <div className="voice-note-content"><Icon name="mic" size={16}/><audio controls preload="metadata" src={msg.audioData} aria-label="Voice note playback" /></div>}
@@ -563,6 +599,11 @@ export default function WhatsApp() {
           <h1>Settings<span className="heading-period">.</span></h1>
           <p>Your preferences are saved in this browser.</p>
         </header>
+        <div className="settings-card">
+          <div className="settings-card-heading"><div><h2>Profile picture</h2><p>Add or change the photo shown on your profile.</p></div></div>
+          <div className="profile-picture-controls"><span className="profile-picture-preview">{profileImage ? <img src={profileImage} alt="Your profile"/> : "Y"}</span><label className="profile-picture-upload">{profileUploading ? "Uploading…" : profileImage ? "Change picture" : "Choose picture"}<input type="file" accept="image/*" disabled={profileUploading} onChange={(event) => { void uploadProfilePicture(event.currentTarget.files?.[0]); event.currentTarget.value = ""; }}/></label><small>Image up to 5 MB</small></div>
+          {profileMessage && <p className="profile-picture-message" role="status">{profileMessage}</p>}
+        </div>
         <div className="settings-card">
           <div className="settings-card-heading">
             <div><h2>Appearance</h2><p>Choose the look that feels right for you.</p></div>
@@ -635,7 +676,7 @@ export default function WhatsApp() {
           {editingContact && <button className="delete-contact-button" onClick={() => setConfirmDeleteContactId(editingContact.id)}>Delete contact</button>}
         </section>
       </div>}
-      {activeCall && selectedChat && <div className="modal-backdrop call-backdrop"><section className="call-screen" role="dialog" aria-modal="true" aria-labelledby="call-screen-title"><div className="call-screen-status">{activeCall === "video" ? "VIDEO CALL" : "VOICE CALL"}</div><span className="person-avatar call-avatar">{getInitials(selectedChat.name)}</span><h2 id="call-screen-title">{selectedChat.name}</h2><p>Calling is not connected yet</p><span className="call-screen-note">Set up a calling service to connect real calls.</span><button className="end-call-button" onClick={() => setActiveCall(null)} aria-label="End call"><Icon name="phone" size={20}/></button><button className="call-cancel-link" onClick={() => setActiveCall(null)}>Close</button></section></div>}
+      {activeCall && selectedChat && <CallWindow overlay contactName={selectedChat.name} callType={activeCall} onClose={() => setActiveCall(null)} />}
       {confirmDeleteContactId && <div className="modal-backdrop confirm-backdrop"><section className="delete-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-contact-title"><h2 id="delete-contact-title">Delete this contact?</h2><p>This will remove the contact and its chat from this browser. This action cannot be undone.</p><div><button className="cancel-button" onClick={() => setConfirmDeleteContactId(null)}>Cancel</button><button className="confirm-delete-button" onClick={() => deleteContact(confirmDeleteContactId)}>Delete contact</button></div></section></div>}
     </main>
   );
