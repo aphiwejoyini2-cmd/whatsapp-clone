@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { console } from "inspector";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -31,6 +32,7 @@ export default function LoginForm() {
       ? requestedDestination
       : "/messages";
     router.replace(destination);
+    //console.log
     router.refresh();
   }
 
