@@ -41,6 +41,7 @@ export default function useWebRTC() {
       });
 
       setIsCalling(true);
+      return true;
 
     } catch (err) {
       console.error("Microphone error:", err);
@@ -48,6 +49,7 @@ export default function useWebRTC() {
       setError(
         "Unable to access your microphone. Please check your browser permissions."
       );
+      return false;
     }
   }
 

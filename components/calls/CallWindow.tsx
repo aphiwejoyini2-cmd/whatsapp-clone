@@ -1,6 +1,8 @@
 "use client";
 
+import { useRef } from "react";
 import useWebRTC from "@/hooks/useWebRTC";
+import { addCallLog } from "@/lib/callLog";
 
 type CallWindowProps = {
   overlay?: boolean;
@@ -21,6 +23,32 @@ export default function CallWindow({
     startCall,
     endCall,
   } = useWebRTC();
+  const callStartedAt = useRef<string | null>(null);
+
+  async function handleStartCall() {
+    const startedAt = new Date().toISOString();
+    const started = await startCall();
+    if (started) {
+      callStartedAt.current = startedAt;
+      return;
+    }
+    addCallLog({ id: crypto.randomUUID(), contactName, type: callType, direction: "outgoing", status: "failed", startedAt, endedAt: new Date().toISOString(), durationSeconds: 0 });
+  }
+
+  function handleEndCall() {
+    const startedAt = callStartedAt.current;
+    if (startedAt) {
+      const endedAt = new Date();
+      addCallLog({ id: crypto.randomUUID(), contactName, type: callType, direction: "outgoing", status: "ended", startedAt, endedAt: endedAt.toISOString(), durationSeconds: Math.max(0, Math.floor((endedAt.getTime() - new Date(startedAt).getTime()) / 1000)) });
+      callStartedAt.current = null;
+    }
+    endCall();
+  }
+
+  function closeCallWindow() {
+    if (isCalling) handleEndCall();
+    onClose?.();
+  }
 
   return (
     <main
@@ -38,14 +66,14 @@ export default function CallWindow({
         padding: "20px",
       }}
       onMouseDown={(event) => {
-        if (overlay && event.target === event.currentTarget) onClose?.();
+        if (overlay && event.target === event.currentTarget) closeCallWindow();
       }}
     >
       <div
         className="call-window-card"
       >
         <header className="call-window-heading">
-          {overlay ? <button type="button" onClick={() => { if (isCalling) endCall(); onClose?.(); }}>Cancel</button> : <span />}
+          {overlay ? <button type="button" onClick={closeCallWindow}>Cancel</button> : <span />}
           <h1>{callType === "video" ? "Video call" : "Voice call"}</h1>
           <span className="call-window-ready">{isCalling ? "Active" : "Ready"}</span>
         </header>
@@ -63,7 +91,7 @@ export default function CallWindow({
         {!isCalling ? (
           <button
             className="call-window-action"
-            onClick={startCall}
+            onClick={() => void handleStartCall()}
             aria-label="Start voice call"
             title="Start voice call"
           >
@@ -72,7 +100,7 @@ export default function CallWindow({
         ) : (
           <button
             className="call-window-action call-window-action-end"
-            onClick={endCall}
+            onClick={handleEndCall}
             aria-label="End call"
             title="End call"
           >

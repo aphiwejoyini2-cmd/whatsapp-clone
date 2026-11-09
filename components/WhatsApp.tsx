@@ -7,6 +7,8 @@ import NavigationIcon from "@/components/NavigationIcon";
 import { EMOJI_CATEGORIES, type EmojiCategory } from "@/lib/emojis";
 import { createClient } from "@/lib/supabase/client";
 import CallWindow from "@/components/calls/CallWindow";
+import CommunityPage from "@/components/CommunityPage";
+import CallLogPage from "@/components/CallLogPage";
 
 type Message = { id: string; text: string; sender: "me" | "them"; sentAt: string; audioData?: string; audioType?: string; mediaData?: string; mediaType?: string; mediaName?: string; sharedContact?: { name: string; phone: string }; edited?: boolean };
 type ChatTheme = "classic" | "sage" | "ocean" | "sunset" | "lavender" | "rose" | "mint" | "slate" | "amber" | "teal" | "sky" | "pink" | "yellow";
@@ -41,7 +43,7 @@ const PHONE_COUNTRIES = [
   { name: "India", code: "+91" }, { name: "France", code: "+33" },
   { name: "Japan", code: "+81" }, { name: "Brazil", code: "+55" },
 ];
-function Icon({ name, size = 20 }: { name: "search" | "plus" | "smile" | "send" | "chat" | "language" | "back" | "close" | "more" | "pin" | "settings" | "phone" | "video" | "mic" | "stop" | "attach"; size?: number }) {
+function Icon({ name, size = 20 }: { name: "search" | "plus" | "smile" | "send" | "chat" | "language" | "back" | "close" | "more" | "pin" | "settings" | "phone" | "video" | "mic" | "stop" | "attach" | "edit"; size?: number }) {
   const paths = {
     search: <><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></>,
     plus: <path d="M12 5v14M5 12h14"/>,
@@ -57,6 +59,7 @@ function Icon({ name, size = 20 }: { name: "search" | "plus" | "smile" | "send" 
     mic: <><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8"/></>,
     stop: <rect x="6" y="6" width="12" height="12" rx="2"/>,
     attach: <path d="m21.4 11.1-8.7 8.7a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7L9.9 17a2 2 0 0 1-2.8-2.8l8.5-8.5"/>,
+    edit: <><path d="m15 5 4 4"/><path d="m4 20 4.5-1 10.8-10.8a2.1 2.1 0 0 0-3-3L5.5 16 4 20Z"/></>,
     pin: <><path d="m16 3 5 5-4 1-4 4 1 4-2 2-3-5-5-5 2-2 4 1 4-4z"/><path d="m2 22 7-7"/></>,
     settings: <><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1a1.7 1.7 0 1 1-2.4 2.4l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.3a1.7 1.7 0 1 1-3.4 0v-.2a1.7 1.7 0 0 0-2.9-1.2l-.1.1a1.7 1.7 0 1 1-2.4-2.4l.1-.1a1.7 1.7 0 0 0-1.2-2.9h-.3a1.7 1.7 0 1 1 0-3.4h.2a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a1.7 1.7 0 1 1 2.4-2.4l.1.1a1.7 1.7 0 0 0 2.9-1.2v-.3a1.7 1.7 0 1 1 3.4 0v.2a1.7 1.7 0 0 0 2.9 1.2l.1-.1a1.7 1.7 0 1 1 2.4 2.4l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.3a1.7 1.7 0 1 1 0 3.4h-.2a1.7 1.7 0 0 0-1.2 2.9z"/></>,
   };
@@ -119,7 +122,7 @@ export default function WhatsApp() {
   const [practiceLanguage, setPracticeLanguage] = useState("es");
   const [practiceMeaning, setPracticeMeaning] = useState("");
   const [practiceLookupBusy, setPracticeLookupBusy] = useState(false);
-  const [activeSection, setActiveSection] = useState<"chats" | "language" | "settings">("chats");
+  const [activeSection, setActiveSection] = useState<"chats" | "language" | "community" | "call-log" | "settings">("chats");
   const [mobileOpenChat, setMobileOpenChat] = useState(false);
   const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "pinned">("all");
   const [openMenuChatId, setOpenMenuChatId] = useState<string | null>(null);
@@ -153,6 +156,13 @@ export default function WhatsApp() {
       window.localStorage.removeItem(STORAGE_KEY);
     }
     setIsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    const requestedSection = new URLSearchParams(window.location.search).get("section");
+    if (requestedSection === "chats" || requestedSection === "language" || requestedSection === "community" || requestedSection === "call-log" || requestedSection === "settings") {
+      setActiveSection(requestedSection);
+    }
   }, []);
 
   useEffect(() => {
@@ -526,6 +536,8 @@ export default function WhatsApp() {
         <button className={`rail-button ${activeSection === "chats" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("chats"); setMobileOpenChat(false); }} aria-label="Chats" title="Chats"><NavigationIcon name="chats"/></button>
         <button className={`rail-button ${activeSection === "language" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("language"); setSearch(""); }} aria-label="Language exchange" title="Language exchange"><NavigationIcon name="language"/></button>
         <a className="rail-button status-rail-link" href="/status" aria-label="Status" title="Status"><NavigationIcon name="status"/></a>
+        <button className={`rail-button community-rail-button ${activeSection === "community" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("community"); setMobileOpenChat(false); }} aria-label="Community" title="Community"><Image className="community-rail-image" src="/community-icon.svg" alt="" width={28} height={28}/></button>
+        <button className={`rail-button ${activeSection === "call-log" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("call-log"); setMobileOpenChat(false); }} aria-label="Call log" title="Call log"><NavigationIcon name="call-log"/></button>
         <div className="rail-spacer" />
         <button className={`rail-button ${activeSection === "settings" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("settings"); setMobileOpenChat(false); }} aria-label="Settings" title="Settings"><NavigationIcon name="settings"/></button>
         <div className="rail-profile" aria-label="Your profile">{profileImage ? <img src={profileImage} alt=""/> : "Y"}</div>
@@ -570,7 +582,8 @@ export default function WhatsApp() {
                 {msg.mediaData && msg.mediaType?.startsWith("image/") && <img className="chat-message-media" src={msg.mediaData} alt={msg.mediaName || "Shared image"} />}
                 {msg.mediaData && msg.mediaType?.startsWith("video/") && <video className="chat-message-media" controls preload="metadata" src={msg.mediaData} aria-label={msg.mediaName || "Shared video"} />}
                 {msg.mediaData && msg.mediaType?.startsWith("audio/") && <div className="voice-note-content"><Icon name="attach" size={16}/><audio controls preload="metadata" src={msg.mediaData} aria-label={msg.mediaName || "Shared audio"} /></div>}
-                {msg.text && (editingMessageId === msg.id ? <form className="message-edit-form" onSubmit={(event) => saveEditedMessage(event, msg.id)}><textarea aria-label="Edit message text" maxLength={2000} autoFocus value={editingMessageText} onChange={(event) => setEditingMessageText(event.target.value)} /><div><button type="button" onClick={cancelEditMessage}>Cancel</button><button type="submit" disabled={!editingMessageText.trim()}>Save</button></div></form> : <p className={msg.sender === "me" ? "message-editable-text" : ""} title={msg.sender === "me" ? "Double-click to edit" : undefined} onDoubleClick={msg.sender === "me" ? () => setEditPromptMessageId(msg.id) : undefined}>{msg.text}</p>)}
+                {msg.sender === "me" && msg.text && editingMessageId !== msg.id && <button className="message-edit-trigger" type="button" aria-label="Edit message" title="Edit message" onClick={() => beginEditMessage(msg)}><Icon name="edit" size={13}/></button>}
+                {msg.text && (editingMessageId === msg.id ? <form className="message-edit-form" onSubmit={(event) => saveEditedMessage(event, msg.id)}><textarea aria-label="Edit message text" maxLength={2000} autoFocus value={editingMessageText} onChange={(event) => setEditingMessageText(event.target.value)} /><div><button type="button" onClick={cancelEditMessage}>Cancel</button><button type="submit" disabled={!editingMessageText.trim()}>Save</button></div></form> : <p className={msg.sender === "me" ? "message-editable-text" : ""} title={msg.sender === "me" ? "Double-click for message actions" : undefined} onDoubleClick={msg.sender === "me" ? () => setEditPromptMessageId(msg.id) : undefined}>{msg.text}</p>)}
                 <span className="message-meta">{msg.sender === "me" ? "You · " : ""}{new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(msg.sentAt))}{msg.edited && <span>Edited</span>}{msg.sender === "me" && <span className="message-check">✓✓</span>}</span>
                 {msg.sender === "me" && msg.text && editingMessageId !== msg.id && editPromptMessageId === msg.id && <div className="message-action-popover"><button type="button" onClick={() => { beginEditMessage(msg); setEditPromptMessageId(null); }}>Edit</button><button className="message-delete-action" type="button" onClick={() => deleteMessage(msg.id)}>Delete</button></div>}
               </div></div>)}
@@ -594,7 +607,7 @@ export default function WhatsApp() {
         <section className="practice-card" aria-labelledby="practice-title"><div className="practice-intro"><span className="eyebrow">PRACTICE STUDIO</span><h2 id="practice-title">Make a real phrase your next lesson.</h2><p>Choose the language, paste or write a phrase, then tap any word to look it up and save it.</p><label className="practice-select-label">I’m practising<select value={practiceLanguage} onChange={(event) => { setPracticeLanguage(event.target.value); setPracticeWord(null); }}><option value="es">Spanish</option><option value="en">English</option><option value="fr">French</option><option value="de">German</option><option value="pt">Portuguese</option><option value="it">Italian</option></select></label></div><div className="practice-demo"><div className="practice-demo-label"><span>YOUR PRACTICE PHRASE</span><span>Tap a word below</span></div><textarea className="practice-input" aria-label="Practice phrase" value={practiceText} onChange={(event) => { setPracticeText(event.target.value); setPracticeWord(null); }} placeholder="Write or paste a phrase…"/><div className="practice-token-row">{practiceText.match(/[\p{L}\p{M}'’-]+|[^\p{L}\p{M}'’-]+/gu)?.map((token, index) => /^[\p{L}\p{M}]/u.test(token) ? <button key={`${token}-${index}`} className={`practice-word ${practiceWord === token.replace(/[.,!?;:]+$/u, "") ? "practice-word-active" : ""}`} onClick={() => setPracticeWord(token.replace(/[.,!?;:]+$/u, ""))}>{token}</button> : <span key={`space-${index}`}>{token}</span>)}</div>{practiceWord && <div className="practice-definition"><div><small>{practiceLanguage.toUpperCase()} <span>→</span> ENGLISH</small><strong>{practiceWord}</strong><span>{practiceLookupBusy ? "Looking up definition…" : practiceMeaning || "No definition available."}</span></div><div className="practice-actions"><button aria-label="Play pronunciation" onClick={() => { if ("speechSynthesis" in window) { window.speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(practiceWord); utterance.lang = practiceLanguage; window.speechSynthesis.speak(utterance); } }}>▶</button><button disabled={savedPracticeWords.includes(practiceWord)} onClick={() => setSavedPracticeWords((words) => words.includes(practiceWord) ? words : [...words, practiceWord])}>{savedPracticeWords.includes(practiceWord) ? "Saved ✓" : "+ Save word"}</button></div></div>}<div className="practice-demo-foot"><span>Definitions from Free Dictionary API · pronunciation from your browser</span><span className="saved-word-count">{savedPracticeWords.length} saved word{savedPracticeWords.length === 1 ? "" : "s"}{savedPracticeWords.length > 0 ? ` · ${savedPracticeWords.join(", ")}` : ""}</span></div></div></section>
         <div className="language-section-label"><span>LANGUAGE PARTNERS</span><span>{languagePartners.length.toString().padStart(2, "0")}</span></div>
         {languagePartners.length ? <div className="partner-grid">{languagePartners.map((partner, index) => <article className="partner-card" key={partner.id}><div className="partner-card-top"><span className={`person-avatar person-avatar-${index % 6} partner-avatar`}>{getInitials(partner.name)}</span><span className="partner-status">{partner.nativeLanguage || "Language not set"}</span></div><h2>{partner.name}</h2><p className="partner-level">{partner.phone}</p><div className="partner-languages"><span><small>Speaks</small><strong>{partner.nativeLanguage || "Not set"}</strong></span><span className="partner-arrow">↔</span><span><small>Learning</small><strong>{partner.learningLanguage}</strong></span></div><button className="partner-message" onClick={() => openChat(partner.id)}><Icon name="chat" size={15}/> Open chat</button></article>)}</div> : <div className="empty-language"><span className="empty-spark"><Icon name="language" size={25}/></span><h2>No language partners yet</h2><p>Add a contact and include the language they speak and the one they are learning. They will appear here.</p><button className="partner-message" onClick={() => { openAddContact(); }}><Icon name="plus" size={16}/> Add a language partner</button></div>}
-      </section> : <section className="settings-section">
+      </section> : activeSection === "community" ? <CommunityPage contacts={chats.map(({ id, name }) => ({ id, name }))} /> : activeSection === "call-log" ? <CallLogPage /> : <section className="settings-section">
         <header className="settings-heading">
           <h1>Settings<span className="heading-period">.</span></h1>
           <p>Your preferences are saved in this browser.</p>

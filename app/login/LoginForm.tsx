@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,7 +18,7 @@ export default function LoginForm() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: signInError } = await supabase.auth.signInWithPassword({ phone: phone.trim(), password });
     setLoading(false);
 
     if (signInError) {
@@ -37,15 +37,19 @@ export default function LoginForm() {
   return (
     <main className="auth-page">
       <div className="auth-card">
-        <div className="auth-logo">💬</div>
-        <h1>Welcome back</h1>
-        <p className="auth-subtitle">Log in to continue to your chats.</p>
+        <header className="auth-heading">
+          <Link href="/" className="auth-heading-link">Back</Link>
+          <div className="auth-heading-brand"><span className="auth-logo" aria-hidden="true">💬</span><h1>Log in</h1></div>
+          <span className="auth-heading-note">Welcome back</span>
+        </header>
+        <div className="auth-content">
+        <p className="auth-subtitle">Sign in with your verified phone number.</p>
 
         <form onSubmit={handleLogin} className="auth-form">
           <div className="form-group">
-            <label htmlFor="email">Email address</label>
-            <input id="email" type="email" autoComplete="email" value={email}
-              onChange={(event) => setEmail(event.target.value)} required />
+            <label htmlFor="phone">Mobile number</label>
+            <input id="phone" type="tel" autoComplete="tel" placeholder="+27821234567" value={phone}
+              onChange={(event) => setPhone(event.target.value)} required />
           </div>
           <div className="form-group">
             <label htmlFor="password">Password</label>
@@ -59,7 +63,7 @@ export default function LoginForm() {
         </form>
 
         <p className="auth-footer">New here? <Link href="/signup">Create an account</Link></p>
-        <p className="auth-footer"><Link href="/">Back to the clone</Link></p>
+        </div>
       </div>
     </main>
   );
