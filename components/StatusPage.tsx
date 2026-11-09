@@ -174,9 +174,9 @@ export default function StatusPage() {
   }
 
   return <main className={`status-page ${isDarkMode ? "theme-dark" : ""}`}>
-    <aside className="status-nav" aria-label="Main navigation"><a className="status-brand-mark" href="/" aria-label="Home"><Image src="/lingo-logo.jpg" alt="" width={42} height={42} priority /></a><a className="status-nav-link" href="/" aria-label="Chats" title="Chats"><NavigationIcon name="chats"/></a><a className="status-nav-link" href="/?section=language" aria-label="Language exchange" title="Language exchange"><NavigationIcon name="language"/></a><a className="status-nav-link status-nav-link-active" href="/status" aria-label="Status" title="Status"><NavigationIcon name="status"/></a><span className="status-nav-spacer"/><a className="status-nav-link" href="/?section=settings" aria-label="Settings" title="Settings"><NavigationIcon name="settings"/></a><span className="status-nav-profile">Y</span></aside>
+    <aside className="status-nav" aria-label="Main navigation"><a className="status-brand-mark" href="/" aria-label="Home"><Image src="/lingo-logo.jpg" alt="" width={42} height={42} priority /></a><a className="status-nav-link" href="/" aria-label="Chats" title="Chats"><NavigationIcon name="chats"/></a><a className="status-nav-link" href="/?section=language" aria-label="Language exchange" title="Language exchange"><NavigationIcon name="language"/></a><a className="status-nav-link status-nav-link-active" href="/status" aria-label="Status" title="Status"><NavigationIcon name="status"/></a><a className="status-nav-link" href="/?section=community" aria-label="Community" title="Community"><Image className="community-rail-image" src="/community-icon.svg" alt="" width={28} height={28}/></a><a className="status-nav-link" href="/?section=call-log" aria-label="Call log" title="Call log"><NavigationIcon name="call-log"/></a><span className="status-nav-spacer"/><a className="status-nav-link" href="/?section=settings" aria-label="Settings" title="Settings"><NavigationIcon name="settings"/></a><span className="status-nav-profile">Y</span></aside>
     <section className="status-layout">
-      <header className="status-heading"><div><span className="status-eyebrow">LITTLE MOMENTS, SHARED</span><h1>Status<span>.</span></h1><p>Share a quick update with your contacts.</p></div><button className="status-new-button" type="button" onClick={() => setIsComposerOpen(true)}>＋ <span>Add status</span></button></header>
+      <header className="status-heading"><div><span className="status-eyebrow">LITTLE MOMENTS, SHARED</span><h1>Status<span>.</span></h1><p>Share a quick update with your contacts.</p></div></header>
       <div className="status-content">
         <section className="status-list-panel" aria-label="Status updates">
           <div className="status-section-title"><h2>Recent updates</h2><span>{statuses.length}</span></div>
@@ -184,6 +184,9 @@ export default function StatusPage() {
           <div className="status-divider" />
           {statuses.length ? <button className="status-row" onClick={openStatuses}><span className="status-avatar status-avatar-ring">Y</span><span className="status-row-copy"><strong>Your updates</strong><small>{statuses.length} status{statuses.length === 1 ? "" : "es"} in your folder</small></span><span className="status-row-chevron">›</span></button> : <div className="status-empty-list"><span>✳</span><strong>No recent updates</strong><small>When your contacts share a status, it will appear here.</small></div>}
           <div className="status-privacy-note"><span>⌑</span><p>Status updates disappear after <strong>24 hours</strong> in WhatsApp. This prototype keeps updates in this browser.</p></div>
+        </section>
+        <section className="status-preview-panel status-add-panel" aria-label="Add a status">
+          <button className="status-new-button status-new-button-centered" type="button" onClick={() => setIsComposerOpen(true)}>＋ <span>Add status</span></button>
         </section>
         
       </div>
