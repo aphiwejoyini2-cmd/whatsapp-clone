@@ -1,0 +1,622 @@
+{
+  "id": "f7b87aee-4df3-437a-9785-53a5a462c0f5",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.messaging_conversations": {
+      "name": "messaging_conversations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_a": {
+          "name": "user_a",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_b": {
+          "name": "user_b",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "messaging_conversations_user_a_fkey": {
+          "name": "messaging_conversations_user_a_fkey",
+          "tableFrom": "messaging_conversations",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "user_a"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "messaging_conversations_user_b_fkey": {
+          "name": "messaging_conversations_user_b_fkey",
+          "tableFrom": "messaging_conversations",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "user_b"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "messaging_conversations_user_a_user_b_key": {
+          "name": "messaging_conversations_user_a_user_b_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_a",
+            "user_b"
+          ]
+        }
+      },
+      "policies": {
+        "Users can read their conversations": {
+          "name": "Users can read their conversations",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "((auth.uid() = user_a) OR (auth.uid() = user_b))"
+        }
+      },
+      "checkConstraints": {
+        "messaging_conversations_ordered_users": {
+          "name": "messaging_conversations_ordered_users",
+          "value": "user_a < user_b"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.messaging_devices": {
+      "name": "messaging_devices",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "device_id": {
+          "name": "device_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "identity_key": {
+          "name": "identity_key",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "signed_prekey": {
+          "name": "signed_prekey",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "signed_prekey_signature": {
+          "name": "signed_prekey_signature",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "messaging_devices_user_id_fkey": {
+          "name": "messaging_devices_user_id_fkey",
+          "tableFrom": "messaging_devices",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "messaging_devices_pkey": {
+          "name": "messaging_devices_pkey",
+          "columns": [
+            "user_id",
+            "device_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {
+        "Users can manage their own devices": {
+          "name": "Users can manage their own devices",
+          "as": "PERMISSIVE",
+          "for": "ALL",
+          "to": [
+            "authenticated"
+          ],
+          "using": "(auth.uid() = user_id)",
+          "withCheck": "(auth.uid() = user_id)"
+        },
+        "Users can view public device keys": {
+          "name": "Users can view public device keys",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ]
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.messaging_messages": {
+      "name": "messaging_messages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "conversation_id": {
+          "name": "conversation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sender_id": {
+          "name": "sender_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recipient_id": {
+          "name": "recipient_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sender_device_id": {
+          "name": "sender_device_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recipient_device_id": {
+          "name": "recipient_device_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "one_time_prekey_id": {
+          "name": "one_time_prekey_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ephemeral_public_key": {
+          "name": "ephemeral_public_key",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "salt": {
+          "name": "salt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nonce": {
+          "name": "nonce",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ciphertext": {
+          "name": "ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "signature": {
+          "name": "signature",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "messaging_messages_conversation_created_idx": {
+          "name": "messaging_messages_conversation_created_idx",
+          "columns": [
+            {
+              "expression": "conversation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "timestamptz_ops"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "timestamptz_ops"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "messaging_messages_conversation_id_fkey": {
+          "name": "messaging_messages_conversation_id_fkey",
+          "tableFrom": "messaging_messages",
+          "tableTo": "messaging_conversations",
+          "columnsFrom": [
+            "conversation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "messaging_messages_recipient_id_fkey": {
+          "name": "messaging_messages_recipient_id_fkey",
+          "tableFrom": "messaging_messages",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "recipient_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "messaging_messages_sender_id_fkey": {
+          "name": "messaging_messages_sender_id_fkey",
+          "tableFrom": "messaging_messages",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "sender_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "Senders can add encrypted messages": {
+          "name": "Senders can add encrypted messages",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "((auth.uid() = sender_id) AND (EXISTS ( SELECT 1\n   FROM messaging_conversations c\n  WHERE ((c.id = messaging_messages.conversation_id) AND ((auth.uid() = c.user_a) OR (auth.uid() = c.user_b)) AND ((messaging_messages.recipient_id = c.user_a) OR (messaging_messages.recipient_id = c.user_b)) AND (messaging_messages.sender_id <> messaging_messages.recipient_id)))))"
+        },
+        "Participants can read encrypted messages": {
+          "name": "Participants can read encrypted messages",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ]
+        }
+      },
+      "checkConstraints": {
+        "messaging_messages_distinct_users": {
+          "name": "messaging_messages_distinct_users",
+          "value": "sender_id <> recipient_id"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.messaging_one_time_prekeys": {
+      "name": "messaging_one_time_prekeys",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "messaging_one_time_prekeys_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854776000",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "device_id": {
+          "name": "device_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key_id": {
+          "name": "key_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "public_key": {
+          "name": "public_key",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "claimed_at": {
+          "name": "claimed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "messaging_prekeys_available_idx": {
+          "name": "messaging_prekeys_available_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "int8_ops"
+            },
+            {
+              "expression": "device_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "int8_ops"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "int8_ops"
+            }
+          ],
+          "isUnique": false,
+          "where": "(claimed_at IS NULL)",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "messaging_one_time_prekeys_user_id_device_id_fkey": {
+          "name": "messaging_one_time_prekeys_user_id_device_id_fkey",
+          "tableFrom": "messaging_one_time_prekeys",
+          "tableTo": "messaging_devices",
+          "columnsFrom": [
+            "user_id",
+            "device_id"
+          ],
+          "columnsTo": [
+            "user_id",
+            "device_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "messaging_one_time_prekeys_user_id_device_id_key_id_key": {
+          "name": "messaging_one_time_prekeys_user_id_device_id_key_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id",
+            "device_id",
+            "key_id"
+          ]
+        }
+      },
+      "policies": {
+        "Users can add their own prekeys": {
+          "name": "Users can add their own prekeys",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "(auth.uid() = user_id)"
+        },
+        "Users can view public prekeys": {
+          "name": "Users can view public prekeys",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ]
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.messaging_profiles": {
+      "name": "messaging_profiles",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "phone_e164": {
+          "name": "phone_e164",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "email_normalized": {
+          "name": "email_normalized",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "messaging_profiles_user_id_fkey": {
+          "name": "messaging_profiles_user_id_fkey",
+          "tableFrom": "messaging_profiles",
+          "tableTo": "users",
+          "schemaTo": "auth",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "messaging_profiles_phone_e164_key": {
+          "name": "messaging_profiles_phone_e164_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "phone_e164"
+          ]
+        },
+        "messaging_profiles_email_normalized_key": {
+          "name": "messaging_profiles_email_normalized_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email_normalized"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "auth.users": {
+      "name": "users",
+      "schema": "auth",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

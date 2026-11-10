@@ -59,16 +59,13 @@ export default function SignupForm() {
 
     setLoading(true);
 
-    const supabase = createClient();
-
-    const { error } = await supabase.auth.signUp({
-      phone: phone.trim(),
-      password,
-      options: { channel: "sms" },
+    const response = await fetch("/api/auth/signup", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: phone.trim(), password }),
     });
-
-    if (error) {
-      setError(error.message);
+    const result = await response.json();
+    if (!response.ok) {
+      setError(result.error ?? "Could not send verification code.");
       setLoading(false);
       return;
     }
@@ -84,13 +81,19 @@ export default function SignupForm() {
     setError("");
     setMessage("");
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.verifyOtp({ phone: phone.trim(), token: otp.trim(), type: "sms" });
+    const response = await fetch("/api/auth/verify-signup", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: phone.trim(), password, code: otp.trim() }),
+    });
+    const result = await response.json();
     setLoading(false);
-    if (error) {
-      setError(error.message);
+    if (!response.ok) {
+      setError(result.error ?? "Could not verify the code.");
       return;
     }
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({ phone: phone.trim(), password });
+    if (error) { setError(error.message); return; }
     router.replace("/messages");
     router.refresh();
   }
@@ -99,10 +102,13 @@ export default function SignupForm() {
     setError("");
     setMessage("");
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.resend({ type: "sms", phone: phone.trim() });
+    const response = await fetch("/api/auth/signup", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: phone.trim(), password }),
+    });
+    const result = await response.json();
     setLoading(false);
-    if (error) setError(error.message);
+    if (!response.ok) setError(result.error ?? "Could not resend the code.");
     else setMessage(`A new code was sent to ${phone.trim()}.`);
   }
 
