@@ -47,7 +47,7 @@ async function sendAppimateSms(phone: string, message: string) {
   const smsResponse = await fetch("https://api.appimate.com/api/notifications?appType=business&sms=true&thirdParty=true&priority=0", {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ thirdParty: true, sms: true, priority: 0, phone, message }),
+    body: JSON.stringify({ thirdParty: true, sms: true, priority: 0 , phone, message }),
     cache: "no-store",
   });
   let sms: { success?: unknown; msg?: unknown; msg2?: unknown; msg3?: unknown };

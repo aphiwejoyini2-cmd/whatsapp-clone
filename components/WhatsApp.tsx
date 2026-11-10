@@ -538,7 +538,9 @@ export default function WhatsApp() {
         <a className="rail-button status-rail-link" href="/status" aria-label="Status" title="Status"><NavigationIcon name="status"/></a>
         <button className={`rail-button community-rail-button ${activeSection === "community" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("community"); setMobileOpenChat(false); }} aria-label="Community" title="Community"><Image className="community-rail-image" src="/community-icon.svg" alt="" width={28} height={28}/></button>
         <button className={`rail-button ${activeSection === "call-log" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("call-log"); setMobileOpenChat(false); }} aria-label="Call log" title="Call log"><NavigationIcon name="call-log"/></button>
+        <a className="rail-button" href="/wallet" aria-label="Wallet" title="Wallet"><NavigationIcon name="wallet"/></a>
         <div className="rail-spacer" />
+        <button className="rail-button" onClick={async () => { try { await createClient().auth.signOut(); } finally { router.replace("/signup"); router.refresh(); } }} aria-label="Log out" title="Log out"><NavigationIcon name="logout"/></button>
         <button className={`rail-button ${activeSection === "settings" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("settings"); setMobileOpenChat(false); }} aria-label="Settings" title="Settings"><NavigationIcon name="settings"/></button>
         <div className="rail-profile" aria-label="Your profile">{profileImage ? <img src={profileImage} alt=""/> : "Y"}</div>
       </aside>
