@@ -9,8 +9,9 @@ import { createClient } from "@/lib/supabase/client";
 import CallWindow from "@/components/calls/CallWindow";
 import CommunityPage from "@/components/CommunityPage";
 import CallLogPage from "@/components/CallLogPage";
+import StatusPage from "@/components/StatusPage";
 
-type Message = { id: string; text: string; sender: "me" | "them"; sentAt: string; audioData?: string; audioType?: string; mediaData?: string; mediaType?: string; mediaName?: string; sharedContact?: { name: string; phone: string }; edited?: boolean };
+type Message = { id: string; text: string; sender: "me" | "them"; sentAt: string; audioData?: string; audioType?: string; mediaData?: string; mediaType?: string; mediaName?: string; sharedContact?: { name: string; phone: string }; edited?: boolean; forwarded?: boolean; replyTo?: { id: string; text: string; sender: "me" | "them" } };
 type ChatTheme = "classic" | "sage" | "ocean" | "sunset" | "lavender" | "rose" | "mint" | "slate" | "amber" | "teal" | "sky" | "pink" | "yellow";
 type Settings = { theme: "light" | "dark"; chatTheme: ChatTheme; compactChats: boolean; showPreviews: boolean };
 type Chat = {
@@ -28,6 +29,7 @@ type Chat = {
   time: string;
   createdAt: string;
   pinned: boolean;
+  archived: boolean;
   unreadCount: number;
   messages: Message[];
 };
@@ -43,7 +45,7 @@ const PHONE_COUNTRIES = [
   { name: "India", code: "+91" }, { name: "France", code: "+33" },
   { name: "Japan", code: "+81" }, { name: "Brazil", code: "+55" },
 ];
-function Icon({ name, size = 20 }: { name: "search" | "plus" | "smile" | "send" | "chat" | "language" | "back" | "close" | "more" | "pin" | "settings" | "phone" | "video" | "mic" | "stop" | "attach" | "edit"; size?: number }) {
+function Icon({ name, size = 20 }: { name: "search" | "plus" | "smile" | "send" | "chat" | "language" | "back" | "close" | "more" | "pin" | "settings" | "phone" | "video" | "mic" | "stop" | "attach" | "edit" | "archive" | "reply" | "copy" | "forward" | "trash"; size?: number }) {
   const paths = {
     search: <><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></>,
     plus: <path d="M12 5v14M5 12h14"/>,
@@ -60,6 +62,11 @@ function Icon({ name, size = 20 }: { name: "search" | "plus" | "smile" | "send" 
     stop: <rect x="6" y="6" width="12" height="12" rx="2"/>,
     attach: <path d="m21.4 11.1-8.7 8.7a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7L9.9 17a2 2 0 0 1-2.8-2.8l8.5-8.5"/>,
     edit: <><path d="m15 5 4 4"/><path d="m4 20 4.5-1 10.8-10.8a2.1 2.1 0 0 0-3-3L5.5 16 4 20Z"/></>,
+    archive: <><path d="M3 4h18v4H3z"/><path d="M5 8v12h14V8M10 12h4"/></>,
+    reply: <><path d="m10 17-5-5 5-5"/><path d="M5 12h8a6 6 0 0 1 6 6v1"/></>,
+    copy: <><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></>,
+    forward: <><path d="m14 5 7 7-7 7"/><path d="M21 12H10a6 6 0 0 0-6 6"/></>,
+    trash: <><path d="M3 6h18M8 6V4h8v2m3 0-1 15H6L5 6m4 4v7m6-7v7"/></>,
     pin: <><path d="m16 3 5 5-4 1-4 4 1 4-2 2-3-5-5-5 2-2 4 1 4-4z"/><path d="m2 22 7-7"/></>,
     settings: <><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1a1.7 1.7 0 1 1-2.4 2.4l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.3a1.7 1.7 0 1 1-3.4 0v-.2a1.7 1.7 0 0 0-2.9-1.2l-.1.1a1.7 1.7 0 1 1-2.4-2.4l.1-.1a1.7 1.7 0 0 0-1.2-2.9h-.3a1.7 1.7 0 1 1 0-3.4h.2a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a1.7 1.7 0 1 1 2.4-2.4l.1.1a1.7 1.7 0 0 0 2.9-1.2v-.3a1.7 1.7 0 1 1 3.4 0v.2a1.7 1.7 0 0 0 2.9 1.2l.1-.1a1.7 1.7 0 1 1 2.4 2.4l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.3a1.7 1.7 0 1 1 0 3.4h-.2a1.7 1.7 0 0 0-1.2 2.9z"/></>,
   };
@@ -72,6 +79,10 @@ function getInitials(name: string) {
 
 function getLastMessage(chat: Chat) {
   return chat.messages[chat.messages.length - 1];
+}
+
+function getChatActivityTime(chat: Chat) {
+  return chat.messages.reduce((latest, message) => Math.max(latest, Date.parse(message.sentAt) || 0), Date.parse(chat.createdAt) || 0);
 }
 
 function formatChatTime(chat: Chat) {
@@ -103,7 +114,11 @@ export default function WhatsApp() {
   const [message, setMessage] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingMessageText, setEditingMessageText] = useState("");
-  const [editPromptMessageId, setEditPromptMessageId] = useState<string | null>(null);
+  const [openMessageMenuId, setOpenMessageMenuId] = useState<string | null>(null);
+  const [messageMenuMoreId, setMessageMenuMoreId] = useState<string | null>(null);
+  const [messageInfoId, setMessageInfoId] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [voiceNoteError, setVoiceNoteError] = useState("");
@@ -122,9 +137,9 @@ export default function WhatsApp() {
   const [practiceLanguage, setPracticeLanguage] = useState("es");
   const [practiceMeaning, setPracticeMeaning] = useState("");
   const [practiceLookupBusy, setPracticeLookupBusy] = useState(false);
-  const [activeSection, setActiveSection] = useState<"chats" | "language" | "community" | "call-log" | "settings">("chats");
+  const [activeSection, setActiveSection] = useState<"chats" | "language" | "community" | "call-log" | "status" | "settings">("chats");
   const [mobileOpenChat, setMobileOpenChat] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "pinned">("all");
+  const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "pinned" | "archived">("all");
   const [openMenuChatId, setOpenMenuChatId] = useState<string | null>(null);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
@@ -149,6 +164,7 @@ export default function WhatsApp() {
           ...chat,
           createdAt: chat.createdAt || new Date(Date.now() - index).toISOString(),
           pinned: Boolean(chat.pinned),
+          archived: Boolean(chat.archived),
           unreadCount: Number(chat.unreadCount) || 0,
         })) as Chat[]);
       }
@@ -160,7 +176,7 @@ export default function WhatsApp() {
 
   useEffect(() => {
     const requestedSection = new URLSearchParams(window.location.search).get("section");
-    if (requestedSection === "chats" || requestedSection === "language" || requestedSection === "community" || requestedSection === "call-log" || requestedSection === "settings") {
+    if (requestedSection === "chats" || requestedSection === "language" || requestedSection === "community" || requestedSection === "call-log" || requestedSection === "status" || requestedSection === "settings") {
       setActiveSection(requestedSection);
     }
   }, []);
@@ -239,11 +255,12 @@ export default function WhatsApp() {
   const selectedChat = chats.find((chat) => chat.id === selectedChatId);
   const filteredChats = useMemo(() => chats
     .filter((chat) => `${chat.name} ${chat.email ?? ""} ${chat.phone}`.toLowerCase().includes(search.toLowerCase()))
-    .filter((chat) => activeFilter === "all" || (activeFilter === "unread" ? chat.unreadCount > 0 : chat.pinned))
-    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || new Date(getLastMessage(b)?.sentAt ?? b.createdAt).getTime() - new Date(getLastMessage(a)?.sentAt ?? a.createdAt).getTime()),
+    .filter((chat) => activeFilter === "archived" ? chat.archived : !chat.archived && (activeFilter === "all" || (activeFilter === "unread" ? chat.unreadCount > 0 : chat.pinned)))
+    .sort((a, b) => getChatActivityTime(b) - getChatActivityTime(a)),
   [chats, search, activeFilter]);
   const languagePartners = useMemo(() => chats.filter((chat) => chat.learningLanguage && `${chat.name} ${chat.nativeLanguage} ${chat.learningLanguage}`.toLowerCase().includes(search.toLowerCase())), [chats, search]);
-  const unreadChatsCount = chats.filter((chat) => chat.unreadCount > 0).length;
+  const activeChats = chats.filter((chat) => !chat.archived);
+  const unreadChatsCount = activeChats.filter((chat) => chat.unreadCount > 0).length;
   const editingContact = chats.find((chat) => chat.id === editingContactId);
   const editingNameParts = editingContact?.name.trim().split(/\s+/) ?? [];
   const editingCountryCode = editingContact?.countryCode || PHONE_COUNTRIES.find((country) => editingContact?.phone.startsWith(country.code))?.code || "+27";
@@ -306,7 +323,7 @@ export default function WhatsApp() {
     if (editingContactId) {
       setChats((current) => current.map((chat) => chat.id === editingContactId ? { ...chat, ...contactFields } : chat));
     } else {
-      const contact: Chat = { id: crypto.randomUUID(), ...contactFields, time: "New contact", createdAt: new Date().toISOString(), pinned: false, unreadCount: 0, messages: [] };
+      const contact: Chat = { id: crypto.randomUUID(), ...contactFields, time: "New contact", createdAt: new Date().toISOString(), pinned: false, archived: false, unreadCount: 0, messages: [] };
       const nextChats = [contact, ...chats];
       setChats(nextChats);
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextChats));
@@ -393,6 +410,8 @@ export default function WhatsApp() {
   }
 
   function beginEditMessage(msg: Message) {
+    setOpenMessageMenuId(null);
+    setMessageMenuMoreId(null);
     setEditingMessageId(msg.id);
     setEditingMessageText(msg.text);
   }
@@ -419,8 +438,30 @@ export default function WhatsApp() {
     setChats((current) => current.map((chat) => chat.id === selectedChatId
       ? { ...chat, messages: chat.messages.filter((msg) => msg.id !== messageId) }
       : chat));
-    setEditPromptMessageId(null);
+    setOpenMessageMenuId(null);
+    setMessageMenuMoreId(null);
     if (editingMessageId === messageId) cancelEditMessage();
+  }
+
+  function replyToMessage(msg: Message) {
+    setReplyingTo(msg);
+    setOpenMessageMenuId(null);
+    setMessageMenuMoreId(null);
+  }
+
+  async function copyMessage(msg: Message) {
+    const copyText = msg.text || msg.mediaName || (msg.audioData ? "Voice note" : "Media message");
+    try { await navigator.clipboard.writeText(copyText); } catch { /* Clipboard may be unavailable in this browser context. */ }
+    setOpenMessageMenuId(null);
+  }
+
+  function forwardMessageTo(chatId: string) {
+    if (!forwardingMessage) return;
+    const sentAt = new Date().toISOString();
+    const forwarded: Message = { ...forwardingMessage, id: crypto.randomUUID(), sender: "me", sentAt, forwarded: true, edited: false, replyTo: undefined };
+    setChats((current) => current.map((chat) => chat.id === chatId ? { ...chat, time: "Now", messages: [...chat.messages, forwarded] } : chat));
+    setForwardingMessage(null);
+    setOpenMessageMenuId(null);
   }
 
   function sendMessage(event?: FormEvent<HTMLFormElement>) {
@@ -428,8 +469,10 @@ export default function WhatsApp() {
     const text = message.trim();
     if ((!text && !chatMediaData) || !selectedChatId) return;
     const sentAt = new Date().toISOString();
-    setChats((current) => current.map((chat) => chat.id === selectedChatId ? { ...chat, time: "Now", unreadCount: 0, messages: [...chat.messages, { id: crypto.randomUUID(), text, sender: "me", sentAt, ...(chatMediaData ? { mediaData: chatMediaData, mediaType: chatMediaType, mediaName: chatMediaName } : {}) }] } : chat));
+    const replyTo = replyingTo ? { id: replyingTo.id, text: replyingTo.text, sender: replyingTo.sender } : undefined;
+    setChats((current) => current.map((chat) => chat.id === selectedChatId ? { ...chat, time: "Now", unreadCount: 0, messages: [...chat.messages, { id: crypto.randomUUID(), text, sender: "me", sentAt, ...(replyTo ? { replyTo } : {}), ...(chatMediaData ? { mediaData: chatMediaData, mediaType: chatMediaType, mediaName: chatMediaName } : {}) }] } : chat));
     setMessage("");
+    setReplyingTo(null);
     clearChatMedia();
     setIsEmojiPickerOpen(false);
   }
@@ -492,8 +535,12 @@ export default function WhatsApp() {
     setMobileOpenChat(true);
   }
 
-  function updateChat(chatId: string, updates: Partial<Pick<Chat, "pinned" | "unreadCount">>) {
+  function updateChat(chatId: string, updates: Partial<Pick<Chat, "pinned" | "archived" | "unreadCount">>) {
     setChats((current) => current.map((chat) => chat.id === chatId ? { ...chat, ...updates } : chat));
+    if (updates.archived && selectedChatId === chatId) {
+      setSelectedChatId(null);
+      setMobileOpenChat(false);
+    }
     setOpenMenuChatId(null);
   }
 
@@ -535,13 +582,13 @@ export default function WhatsApp() {
         <a className="brand-mark" href="#chats" aria-label="Home"><Image src="/lingo-logo.jpg" alt="" width={42} height={42} priority /></a>
         <button className={`rail-button ${activeSection === "chats" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("chats"); setMobileOpenChat(false); }} aria-label="Chats" title="Chats"><NavigationIcon name="chats"/></button>
         <button className={`rail-button ${activeSection === "language" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("language"); setSearch(""); }} aria-label="Language exchange" title="Language exchange"><NavigationIcon name="language"/></button>
-        <a className="rail-button status-rail-link" href="/status" aria-label="Status" title="Status"><NavigationIcon name="status"/></a>
+        <button className={`rail-button ${activeSection === "status" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("status"); setMobileOpenChat(false); }} aria-label="Status" title="Status"><NavigationIcon name="status"/></button>
         <button className={`rail-button community-rail-button ${activeSection === "community" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("community"); setMobileOpenChat(false); }} aria-label="Community" title="Community"><Image className="community-rail-image" src="/community-icon.svg" alt="" width={28} height={28}/></button>
         <button className={`rail-button ${activeSection === "call-log" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("call-log"); setMobileOpenChat(false); }} aria-label="Call log" title="Call log"><NavigationIcon name="call-log"/></button>
         <a className="rail-button" href="/wallet" aria-label="Wallet" title="Wallet"><NavigationIcon name="wallet"/></a>
+          <button className={`rail-button ${activeSection === "settings" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("settings"); setMobileOpenChat(false); }} aria-label="Settings" title="Settings"><NavigationIcon name="settings"/></button>
+          <button className="rail-button" onClick={async () => { try { await createClient().auth.signOut(); } finally { router.replace("/signup"); router.refresh(); } }} aria-label="Log out" title="Log out"><NavigationIcon name="logout"/></button>
         <div className="rail-spacer" />
-        <button className="rail-button" onClick={async () => { try { await createClient().auth.signOut(); } finally { router.replace("/signup"); router.refresh(); } }} aria-label="Log out" title="Log out"><NavigationIcon name="logout"/></button>
-        <button className={`rail-button ${activeSection === "settings" ? "rail-button-active" : ""}`} onClick={() => { setActiveSection("settings"); setMobileOpenChat(false); }} aria-label="Settings" title="Settings"><NavigationIcon name="settings"/></button>
         <div className="rail-profile" aria-label="Your profile">{profileImage ? <img src={profileImage} alt=""/> : "Y"}</div>
       </aside>
 
@@ -551,47 +598,48 @@ export default function WhatsApp() {
           <header className="inbox-heading"><div><span className="eyebrow">YOUR CONVERSATIONS</span><h1>Messages<span className="heading-period">.</span></h1></div><button className="new-chat-button" onClick={openAddContact} aria-label="Add a contact" title="Add a contact"><Icon name="plus" size={21}/></button></header>
           <label className="search-field"><Icon name="search" size={18}/><input aria-label="Search contacts" placeholder="Search by name or number" value={search} onChange={(event) => setSearch(event.target.value)}/></label>
           <div className="filter-row" aria-label="Filter chats">
-            <button className={`filter-chip ${activeFilter === "all" ? "filter-chip-active" : ""}`} onClick={() => setActiveFilter("all")}>All chats <span>{chats.length}</span></button>
+            <button className={`filter-chip ${activeFilter === "all" ? "filter-chip-active" : ""}`} onClick={() => setActiveFilter("all")}>All chats <span>{activeChats.length}</span></button>
             <button className={`filter-chip ${activeFilter === "unread" ? "filter-chip-active" : ""}`} onClick={() => setActiveFilter("unread")}>Unread <span>{unreadChatsCount}</span></button>
-            <button className={`filter-chip ${activeFilter === "pinned" ? "filter-chip-active" : ""}`} onClick={() => setActiveFilter("pinned")}>Pinned <span>{chats.filter((chat) => chat.pinned).length}</span></button>
+            <button className={`filter-chip ${activeFilter === "pinned" ? "filter-chip-active" : ""}`} onClick={() => setActiveFilter("pinned")}>Pinned <span>{activeChats.filter((chat) => chat.pinned).length}</span></button>
+            <button className={`filter-chip ${activeFilter === "archived" ? "filter-chip-active" : ""}`} onClick={() => setActiveFilter("archived")}>Archived <span>{chats.filter((chat) => chat.archived).length}</span></button>
           </div>
-          <div className="inbox-section-label"><span>{activeFilter === "unread" ? "UNREAD CHATS" : activeFilter === "pinned" ? "PINNED CHATS" : "RECENT CHATS"}</span><span>{filteredChats.length.toString().padStart(2, "0")}</span></div>
+          <div className="inbox-section-label"><span>{activeFilter === "unread" ? "UNREAD CHATS" : activeFilter === "pinned" ? "PINNED CHATS" : activeFilter === "archived" ? "ARCHIVED CHATS" : "RECENT CHATS"}</span><span>{filteredChats.length.toString().padStart(2, "0")}</span></div>
           <div className="conversation-list">
             {filteredChats.map((chat, index) => {
               const lastMessage = getLastMessage(chat);
               return <div className="conversation-entry" key={chat.id}>
                 <button className={`conversation ${selectedChatId === chat.id ? "conversation-active" : ""} ${chat.unreadCount ? "conversation-unread" : ""}`} onClick={() => openChat(chat.id)}>
                   <span className={`person-avatar person-avatar-${index % 6}`}>{getInitials(chat.name)}</span>
-                  <span className="conversation-copy"><span className="conversation-top"><strong>{chat.name}{chat.pinned && <Icon name="pin" size={12}/>}</strong><time>{formatChatTime(chat)}</time></span><span className="conversation-preview">{settings.showPreviews ? lastMessage ? <>{lastMessage.sender === "me" && <span className="read-check">✓✓ </span>}{lastMessage.sharedContact ? `Contact: ${lastMessage.sharedContact.name}` : lastMessage.mediaData ? lastMessage.mediaName || "Media" : lastMessage.audioData ? "Voice note" : lastMessage.text}</> : chat.about || "No messages yet" : "Open chat to view messages"}</span></span>
+                  <span className="conversation-copy"><span className="conversation-top"><strong>{chat.name}{chat.pinned && <Icon name="pin" size={12}/>}</strong><time>{formatChatTime(chat)}</time></span><span className="conversation-preview">{settings.showPreviews ? lastMessage ? <>{lastMessage.sender === "me" && <span className="read-check">✓ </span>}{lastMessage.sharedContact ? `Contact: ${lastMessage.sharedContact.name}` : lastMessage.mediaData ? lastMessage.mediaName || "Media" : lastMessage.audioData ? "Voice note" : lastMessage.text}</> : chat.about || "No messages yet" : "Open chat to view messages"}</span></span>
                   {chat.unreadCount > 0 && <span className="unread-count">{chat.unreadCount > 99 ? "99+" : chat.unreadCount}</span>}
                 </button>
                 <button className="conversation-menu-trigger" aria-label={`Chat options for ${chat.name}`} title="Chat options" onClick={() => setOpenMenuChatId((current) => current === chat.id ? null : chat.id)}><Icon name="more" size={17}/></button>
-                {openMenuChatId === chat.id && <div className="conversation-menu" role="menu"><button role="menuitem" onClick={() => updateChat(chat.id, { pinned: !chat.pinned })}><Icon name="pin" size={15}/>{chat.pinned ? "Unpin chat" : "Pin chat"}</button><button role="menuitem" onClick={() => updateChat(chat.id, { unreadCount: chat.unreadCount ? 0 : 1 })}>{chat.unreadCount ? "Mark as read" : "Mark as unread"}</button><button role="menuitem" onClick={() => openEditContact(chat.id)}>Edit contact</button></div>}
+                {openMenuChatId === chat.id && <div className="conversation-menu" role="menu"><button role="menuitem" onClick={() => updateChat(chat.id, { archived: !chat.archived })}><Icon name="archive" size={15}/>{chat.archived ? "Unarchive chat" : "Archive chat"}</button><button role="menuitem" onClick={() => updateChat(chat.id, { pinned: !chat.pinned })}><Icon name="pin" size={15}/>{chat.pinned ? "Unpin chat" : "Pin chat"}</button><button role="menuitem" onClick={() => updateChat(chat.id, { unreadCount: chat.unreadCount ? 0 : 1 })}><Icon name="chat" size={15}/>{chat.unreadCount ? "Mark as read" : "Mark as unread"}</button></div>}
               </div>;
             })}
-            {filteredChats.length === 0 && <div className="empty-inbox"><span className="empty-spark">✳</span><h2>{search ? "No contacts found" : "Your chats start here"}</h2><p>{search ? "Try another name or phone number." : "Add a contact to start a conversation."}</p><button className="partner-message" onClick={openAddContact}><Icon name="plus" size={16}/> Add a contact</button></div>}
+            {filteredChats.length === 0 && <div className="empty-inbox"><span className="empty-spark">✳</span><h2>{search ? "No contacts found" : activeFilter === "unread" ? "No unread chats" : activeFilter === "pinned" ? "No pinned chats" : activeFilter === "archived" ? "No archived chats" : "Your chats start here"}</h2><p>{search ? "Try another name or phone number." : activeFilter === "unread" ? "New unread messages will show up here." : activeFilter === "pinned" ? "Pin a chat to keep it easy to find." : activeFilter === "archived" ? "Chats you archive will appear here." : "Add a contact to start a conversation."}</p>{activeFilter === "all" && <button className="partner-message" onClick={openAddContact}><Icon name="plus" size={16}/> Add a contact</button>}</div>}
           </div>
         </aside>
 
         <section className={`conversation-panel ${mobileOpenChat ? "conversation-panel-mobile-open" : ""}`} aria-label="Conversation">
           {selectedChat ? <>
             <header className="conversation-header"><button className="mobile-back" onClick={() => setMobileOpenChat(false)} aria-label="Back to contacts"><Icon name="back"/></button><div className="contact-summary"><span className="person-avatar person-avatar-large">{getInitials(selectedChat.name)}</span><span><strong>{selectedChat.name}</strong><small>{selectedChat.phone}</small></span></div><div className="conversation-call-actions"><button className="call-action-button" onClick={() => setActiveCall("voice")} aria-label={`Voice call ${selectedChat.name}`} title="Voice call"><Icon name="phone" size={17}/></button><button className="call-action-button" onClick={() => setActiveCall("video")} aria-label={`Video call ${selectedChat.name}`} title="Video call"><Icon name="video" size={18}/></button><button className="edit-contact-button" onClick={() => openEditContact(selectedChat.id)}>Edit</button></div></header>
-            <div className={`chat-canvas chat-theme-${settings.chatTheme}`}><div className="day-divider"><span>Today</span></div><div className="message-stack">
-              {selectedChat.messages.map((msg) => <div key={msg.id} className={`message-row ${msg.sender === "me" ? "message-row-me" : ""}`}><div className={`message-bubble ${msg.sender === "me" ? "message-bubble-me" : "message-bubble-them"}`}>
-                {msg.audioData && <div className="voice-note-content"><Icon name="mic" size={16}/><audio controls preload="metadata" src={msg.audioData} aria-label="Voice note playback" /></div>}
+            <div className={`chat-canvas chat-theme-${settings.chatTheme}`} onClick={() => { setOpenMessageMenuId(null); setMessageMenuMoreId(null); setMessageInfoId(null); }}><div className="day-divider"><span>Today</span></div><div className="message-stack">
+              {selectedChat.messages.map((msg) => <div key={msg.id} className={`message-row ${msg.sender === "me" ? "message-row-me" : ""}`}><div className={`message-bubble ${msg.sender === "me" ? "message-bubble-me" : "message-bubble-them"}`} tabIndex={0} aria-haspopup="menu" aria-expanded={openMessageMenuId === msg.id} onClick={(event) => { if ((event.target as HTMLElement).closest("button,a,input,textarea,audio,video")) return; event.stopPropagation(); setOpenMessageMenuId((current) => current === msg.id ? null : msg.id); setMessageMenuMoreId(null); setMessageInfoId(null); }} onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setOpenMessageMenuId((current) => current === msg.id ? null : msg.id); } }}> 
+                {msg.forwarded && <small className="message-forwarded-label">Forwarded</small>}{msg.replyTo && <div className="message-reply-quote"><strong>{msg.replyTo.sender === "me" ? "You" : selectedChat.name}</strong><span>{msg.replyTo.text || "Media message"}</span></div>}{msg.audioData && <div className="voice-note-content"><Icon name="mic" size={16}/><audio controls preload="metadata" src={msg.audioData} aria-label="Voice note playback" /></div>}
                 {msg.sharedContact && <div className="shared-contact-card"><span className="shared-contact-avatar">{getInitials(msg.sharedContact.name)}</span><span><strong>{msg.sharedContact.name}</strong><small>{msg.sharedContact.phone}</small></span></div>}
                 {msg.mediaData && !msg.mediaType?.startsWith("image/") && !msg.mediaType?.startsWith("video/") && !msg.mediaType?.startsWith("audio/") && <a className="shared-document-card" href={msg.mediaData} download={msg.mediaName || "shared-document"}><Icon name="attach" size={19}/><span><strong>{msg.mediaName || "Document"}</strong><small>Download file</small></span></a>}
                 {msg.mediaData && msg.mediaType?.startsWith("image/") && <img className="chat-message-media" src={msg.mediaData} alt={msg.mediaName || "Shared image"} />}
                 {msg.mediaData && msg.mediaType?.startsWith("video/") && <video className="chat-message-media" controls preload="metadata" src={msg.mediaData} aria-label={msg.mediaName || "Shared video"} />}
                 {msg.mediaData && msg.mediaType?.startsWith("audio/") && <div className="voice-note-content"><Icon name="attach" size={16}/><audio controls preload="metadata" src={msg.mediaData} aria-label={msg.mediaName || "Shared audio"} /></div>}
-                {msg.sender === "me" && msg.text && editingMessageId !== msg.id && <button className="message-edit-trigger" type="button" aria-label="Edit message" title="Edit message" onClick={() => beginEditMessage(msg)}><Icon name="edit" size={13}/></button>}
-                {msg.text && (editingMessageId === msg.id ? <form className="message-edit-form" onSubmit={(event) => saveEditedMessage(event, msg.id)}><textarea aria-label="Edit message text" maxLength={2000} autoFocus value={editingMessageText} onChange={(event) => setEditingMessageText(event.target.value)} /><div><button type="button" onClick={cancelEditMessage}>Cancel</button><button type="submit" disabled={!editingMessageText.trim()}>Save</button></div></form> : <p className={msg.sender === "me" ? "message-editable-text" : ""} title={msg.sender === "me" ? "Double-click for message actions" : undefined} onDoubleClick={msg.sender === "me" ? () => setEditPromptMessageId(msg.id) : undefined}>{msg.text}</p>)}
-                <span className="message-meta">{msg.sender === "me" ? "You · " : ""}{new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(msg.sentAt))}{msg.edited && <span>Edited</span>}{msg.sender === "me" && <span className="message-check">✓✓</span>}</span>
-                {msg.sender === "me" && msg.text && editingMessageId !== msg.id && editPromptMessageId === msg.id && <div className="message-action-popover"><button type="button" onClick={() => { beginEditMessage(msg); setEditPromptMessageId(null); }}>Edit</button><button className="message-delete-action" type="button" onClick={() => deleteMessage(msg.id)}>Delete</button></div>}
+                {msg.text && (editingMessageId === msg.id ? <form className="message-edit-form" onSubmit={(event) => saveEditedMessage(event, msg.id)}><textarea aria-label="Edit message text" maxLength={2000} autoFocus value={editingMessageText} onChange={(event) => setEditingMessageText(event.target.value)} /><div><button type="button" onClick={cancelEditMessage}>Cancel</button><button type="submit" disabled={!editingMessageText.trim()}>Save</button></div></form> : <p className={msg.sender === "me" ? "message-editable-text" : ""}>{msg.text}</p>)}
+                <span className="message-meta">{msg.sender === "me" ? "You · " : ""}{new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(msg.sentAt))}{msg.edited && <span>Edited</span>}{msg.sender === "me" && <span className="message-check">✓</span>}</span>
+                {openMessageMenuId === msg.id && <div className="message-action-menu" role="menu" onClick={(event) => event.stopPropagation()}>{messageMenuMoreId === msg.id ? <><div className="message-action-menu-title"><button type="button" onClick={() => { setMessageMenuMoreId(null); setMessageInfoId(null); }}>‹</button><strong>More</strong></div><button role="menuitem" onClick={() => setMessageInfoId((current) => current === msg.id ? null : msg.id)}>Message info <Icon name="more" size={17}/></button>{messageInfoId === msg.id && <div className="message-info-details"><strong>{msg.sender === "me" ? "You" : selectedChat.name}</strong><span>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(msg.sentAt))}</span></div>}</> : <><button role="menuitem" onClick={() => replyToMessage(msg)}>Reply <Icon name="reply" size={19}/></button><button role="menuitem" onClick={() => { void copyMessage(msg); }}>Copy <Icon name="copy" size={19}/></button>{msg.sender === "me" && msg.text && <button role="menuitem" onClick={() => beginEditMessage(msg)}>Edit <Icon name="edit" size={18}/></button>}<button role="menuitem" onClick={() => { setForwardingMessage(msg); setOpenMessageMenuId(null); }}>Forward <Icon name="forward" size={19}/></button><button className="message-action-delete" role="menuitem" onClick={() => deleteMessage(msg.id)}>Delete <Icon name="trash" size={19}/></button><button role="menuitem" onClick={() => setMessageMenuMoreId(msg.id)}>More... <Icon name="more" size={19}/></button></>}</div>}
               </div></div>)}
               {selectedChat.messages.length === 0 && <div className="first-message"><span className="empty-spark">✳</span><p>This is the beginning of your conversation with <strong>{selectedChat.name}</strong>.</p><span>Send a message to say hello.</span></div>}
             </div></div>
             <form className="composer-wrap" onSubmit={sendMessage}>
+              {replyingTo && <div className="reply-compose-preview"><span><strong>Replying to {replyingTo.sender === "me" ? "yourself" : selectedChat.name}</strong><small>{replyingTo.text || replyingTo.mediaName || "Media message"}</small></span><button type="button" aria-label="Cancel reply" onClick={() => setReplyingTo(null)}>×</button></div>}
               <input ref={documentInputRef} className="chat-attachment-input" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.odt,.ods,.odp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.*,text/*" aria-label="Choose a document" onChange={(event) => chooseChatMedia(event.target.files?.[0], "document")} />
               <input ref={photoInputRef} className="chat-attachment-input" type="file" accept="image/*" aria-label="Choose a photo" onChange={(event) => chooseChatMedia(event.target.files?.[0], "photo")} />
               <input ref={videoInputRef} className="chat-attachment-input" type="file" accept="video/*" aria-label="Choose a video" onChange={(event) => chooseChatMedia(event.target.files?.[0], "video")} />
@@ -609,7 +657,7 @@ export default function WhatsApp() {
         <section className="practice-card" aria-labelledby="practice-title"><div className="practice-intro"><span className="eyebrow">PRACTICE STUDIO</span><h2 id="practice-title">Make a real phrase your next lesson.</h2><p>Choose the language, paste or write a phrase, then tap any word to look it up and save it.</p><label className="practice-select-label">I’m practising<select value={practiceLanguage} onChange={(event) => { setPracticeLanguage(event.target.value); setPracticeWord(null); }}><option value="es">Spanish</option><option value="en">English</option><option value="fr">French</option><option value="de">German</option><option value="pt">Portuguese</option><option value="it">Italian</option></select></label></div><div className="practice-demo"><div className="practice-demo-label"><span>YOUR PRACTICE PHRASE</span><span>Tap a word below</span></div><textarea className="practice-input" aria-label="Practice phrase" value={practiceText} onChange={(event) => { setPracticeText(event.target.value); setPracticeWord(null); }} placeholder="Write or paste a phrase…"/><div className="practice-token-row">{practiceText.match(/[\p{L}\p{M}'’-]+|[^\p{L}\p{M}'’-]+/gu)?.map((token, index) => /^[\p{L}\p{M}]/u.test(token) ? <button key={`${token}-${index}`} className={`practice-word ${practiceWord === token.replace(/[.,!?;:]+$/u, "") ? "practice-word-active" : ""}`} onClick={() => setPracticeWord(token.replace(/[.,!?;:]+$/u, ""))}>{token}</button> : <span key={`space-${index}`}>{token}</span>)}</div>{practiceWord && <div className="practice-definition"><div><small>{practiceLanguage.toUpperCase()} <span>→</span> ENGLISH</small><strong>{practiceWord}</strong><span>{practiceLookupBusy ? "Looking up definition…" : practiceMeaning || "No definition available."}</span></div><div className="practice-actions"><button aria-label="Play pronunciation" onClick={() => { if ("speechSynthesis" in window) { window.speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(practiceWord); utterance.lang = practiceLanguage; window.speechSynthesis.speak(utterance); } }}>▶</button><button disabled={savedPracticeWords.includes(practiceWord)} onClick={() => setSavedPracticeWords((words) => words.includes(practiceWord) ? words : [...words, practiceWord])}>{savedPracticeWords.includes(practiceWord) ? "Saved ✓" : "+ Save word"}</button></div></div>}<div className="practice-demo-foot"><span>Definitions from Free Dictionary API · pronunciation from your browser</span><span className="saved-word-count">{savedPracticeWords.length} saved word{savedPracticeWords.length === 1 ? "" : "s"}{savedPracticeWords.length > 0 ? ` · ${savedPracticeWords.join(", ")}` : ""}</span></div></div></section>
         <div className="language-section-label"><span>LANGUAGE PARTNERS</span><span>{languagePartners.length.toString().padStart(2, "0")}</span></div>
         {languagePartners.length ? <div className="partner-grid">{languagePartners.map((partner, index) => <article className="partner-card" key={partner.id}><div className="partner-card-top"><span className={`person-avatar person-avatar-${index % 6} partner-avatar`}>{getInitials(partner.name)}</span><span className="partner-status">{partner.nativeLanguage || "Language not set"}</span></div><h2>{partner.name}</h2><p className="partner-level">{partner.phone}</p><div className="partner-languages"><span><small>Speaks</small><strong>{partner.nativeLanguage || "Not set"}</strong></span><span className="partner-arrow">↔</span><span><small>Learning</small><strong>{partner.learningLanguage}</strong></span></div><button className="partner-message" onClick={() => openChat(partner.id)}><Icon name="chat" size={15}/> Open chat</button></article>)}</div> : <div className="empty-language"><span className="empty-spark"><Icon name="language" size={25}/></span><h2>No language partners yet</h2><p>Add a contact and include the language they speak and the one they are learning. They will appear here.</p><button className="partner-message" onClick={() => { openAddContact(); }}><Icon name="plus" size={16}/> Add a language partner</button></div>}
-      </section> : activeSection === "community" ? <CommunityPage contacts={chats.map(({ id, name }) => ({ id, name }))} /> : activeSection === "call-log" ? <CallLogPage /> : <section className="settings-section">
+      </section> : activeSection === "community" ? <CommunityPage contacts={chats.map(({ id, name }) => ({ id, name }))} /> : activeSection === "call-log" ? <CallLogPage /> : activeSection === "status" ? <StatusPage embedded /> : <section className="settings-section">
         <header className="settings-heading">
           <h1>Settings<span className="heading-period">.</span></h1>
           <p>Your preferences are saved in this browser.</p>
@@ -693,6 +741,7 @@ export default function WhatsApp() {
       </div>}
       {activeCall && selectedChat && <CallWindow overlay contactName={selectedChat.name} callType={activeCall} onClose={() => setActiveCall(null)} />}
       {confirmDeleteContactId && <div className="modal-backdrop confirm-backdrop"><section className="delete-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-contact-title"><h2 id="delete-contact-title">Delete this contact?</h2><p>This will remove the contact and its chat from this browser. This action cannot be undone.</p><div><button className="cancel-button" onClick={() => setConfirmDeleteContactId(null)}>Cancel</button><button className="confirm-delete-button" onClick={() => deleteContact(confirmDeleteContactId)}>Delete contact</button></div></section></div>}
+    {forwardingMessage && <div className="message-forward-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setForwardingMessage(null); }}><section className="message-forward-dialog" role="dialog" aria-modal="true" aria-labelledby="forward-message-title"><header><div><span className="eyebrow">SHARE MESSAGE</span><h2 id="forward-message-title">Forward message</h2></div><button type="button" aria-label="Close" onClick={() => setForwardingMessage(null)}>×</button></header><p className="forward-message-preview">{forwardingMessage.text || forwardingMessage.mediaName || (forwardingMessage.audioData ? "Voice note" : "Media message")}</p><strong className="forward-recipient-label">Choose a chat</strong><div className="forward-recipient-list">{chats.map((chat) => <button type="button" key={chat.id} onClick={() => forwardMessageTo(chat.id)}><span className="person-avatar">{getInitials(chat.name)}</span><span><strong>{chat.name}</strong><small>{chat.phone}</small></span><Icon name="forward" size={17}/></button>)}</div></section></div>}
     </main>
   );
 }
