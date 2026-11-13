@@ -256,7 +256,7 @@ export default function WhatsApp() {
   const filteredChats = useMemo(() => chats
     .filter((chat) => `${chat.name} ${chat.email ?? ""} ${chat.phone}`.toLowerCase().includes(search.toLowerCase()))
     .filter((chat) => activeFilter === "archived" ? chat.archived : !chat.archived && (activeFilter === "all" || (activeFilter === "unread" ? chat.unreadCount > 0 : chat.pinned)))
-    .sort((a, b) => getChatActivityTime(b) - getChatActivityTime(a)),
+    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || getChatActivityTime(b) - getChatActivityTime(a)),
   [chats, search, activeFilter]);
   const languagePartners = useMemo(() => chats.filter((chat) => chat.learningLanguage && `${chat.name} ${chat.nativeLanguage} ${chat.learningLanguage}`.toLowerCase().includes(search.toLowerCase())), [chats, search]);
   const activeChats = chats.filter((chat) => !chat.archived);
