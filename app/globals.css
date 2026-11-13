@@ -480,3 +480,101 @@
 .wallet-theme-dark .wallet-send-button:hover:not(:disabled){border-color:#4a965c;background:linear-gradient(145deg,#327747,#245d36);box-shadow:0 7px 17px #0007,inset 0 1px 0 #ffffff20}
 .wallet-theme-dark .wallet-send-button:active:not(:disabled){box-shadow:0 2px 6px #0006,inset 0 2px 4px #10281780}
 .wallet-theme-dark .wallet-send-button:disabled{border-color:#304a36;background:linear-gradient(145deg,#263b2b,#1d3022);box-shadow:0 3px 9px #0005,inset 0 1px 0 #ffffff0c;color:#91ad96}
+
+/* Add status CTA: softly raised green pill with theme-aware states. */
+.status-new-button{height:44px;padding:0 19px;border:1px solid #328258;border-radius:999px;background:linear-gradient(145deg,#3c9a65,#277a4e);box-shadow:0 6px 15px #23734830,inset 0 1px 0 #ffffff38;color:#fff;transition:transform .16s ease,background .16s ease,border-color .16s ease,box-shadow .16s ease}
+.status-new-button:hover{transform:translateY(-1px);border-color:#28764b;background:linear-gradient(145deg,#45a66d,#2e8554);box-shadow:0 9px 18px #2373483b,inset 0 1px 0 #ffffff42}
+.status-new-button:active{transform:translateY(0);box-shadow:0 3px 7px #2373482a,inset 0 2px 4px #17482c30}
+.status-new-button:focus-visible{outline:2px solid #79b68b;outline-offset:3px}
+.status-page.theme-dark .status-new-button{border-color:#397c4c;background:linear-gradient(145deg,#28623a,#1d4d2e);box-shadow:0 6px 15px #0006,inset 0 1px 0 #ffffff18;color:#e2f1e5}
+.status-page.theme-dark .status-new-button:hover{border-color:#4a965c;background:linear-gradient(145deg,#327747,#245d36);box-shadow:0 9px 19px #0007,inset 0 1px 0 #ffffff20}
+.status-page.theme-dark .status-new-button:active{box-shadow:0 3px 7px #0006,inset 0 2px 4px #10281780}
+@media(max-width:620px){.status-new-button{width:42px;height:42px;padding:0;border-radius:50%}}
+
+/* WhatsApp-style privacy settings groups and choice sheet. */
+.privacy-settings-card{display:flex;flex-direction:column;gap:12px}
+.privacy-settings-list{overflow:hidden;border:1px solid #e7ece5;border-radius:15px;background:#fff}
+.privacy-setting-row{width:100%;min-height:53px;padding:0 15px;display:flex;align-items:center;justify-content:space-between;gap:14px;border:0;border-bottom:1px solid #e7ece5;background:transparent;color:#303b33;text-align:left;font:inherit;font-size:12px;cursor:pointer;transition:background .16s ease}
+.privacy-setting-row:last-child{border-bottom:0}
+button.privacy-setting-row:hover{background:#f3f7f1}
+.privacy-setting-value{display:flex;align-items:center;gap:9px;color:#7b857d;text-align:right;white-space:nowrap}
+.privacy-setting-value b{color:#a4aca5;font-size:21px;font-weight:400;line-height:1}
+.privacy-help-text{margin:0;padding:0 15px;color:#7e8880;font-size:11px;line-height:1.55}
+.privacy-switch-row{margin-top:8px;padding:13px 15px;border:1px solid #e7ece5;border-radius:15px;background:#fff}
+.privacy-switch-row:hover{background:#fafcf9}
+.privacy-switch-row>span{max-width:calc(100% - 54px)}
+.privacy-switch-row strong{display:block;margin-bottom:4px}
+.privacy-switch-row small{display:block;line-height:1.5}
+.privacy-receipts-help{margin-top:-5px}
+.privacy-secondary-list{margin-top:3px}
+.privacy-setting-unavailable{color:#777f78;cursor:default}
+.privacy-setting-unavailable .privacy-setting-value{color:#9aa29b}
+.privacy-setting-unavailable .privacy-setting-value b{font-size:0}
+.privacy-setting-unavailable .privacy-setting-value b::before{content:"–";font-size:18px}
+.privacy-dialog-backdrop{position:fixed;z-index:45;inset:0;padding:18px;display:grid;place-items:center;background:#10151075;backdrop-filter:blur(3px)}
+.privacy-dialog{width:min(100%,390px);padding:17px;border:1px solid #e2e9e0;border-radius:20px;background:#fff;box-shadow:0 20px 60px #0003;color:#344138}
+.privacy-dialog>header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.privacy-dialog h2{margin:0;font:700 17px var(--font-display)}
+.privacy-dialog>header button{width:32px;height:32px;border:0;border-radius:50%;background:#f1f5ef;color:#637067;font-size:21px;cursor:pointer}
+.privacy-dialog>p{margin:5px 0 12px;color:#849087;font-size:11px}
+.privacy-dialog>div{overflow:hidden;border:1px solid #e7ece5;border-radius:13px}
+.privacy-dialog>div>button{width:100%;min-height:46px;padding:0 13px;display:flex;align-items:center;justify-content:space-between;border:0;border-bottom:1px solid #e7ece5;background:#fff;color:#344138;text-align:left;font-size:12px;cursor:pointer}
+.privacy-dialog>div>button:last-child{border-bottom:0}
+.privacy-dialog>div>button:hover,.privacy-dialog>div>button.privacy-option-selected{background:#f0f6ef;color:#34784b}
+.privacy-dialog>div>button b{color:#438a59}
+.messenger-shell.theme-dark .privacy-settings-list,.messenger-shell.theme-dark .privacy-switch-row{border-color:#303a32;background:#151b16}
+.messenger-shell.theme-dark .privacy-setting-row{border-color:#303a32;color:#e0e8e1}
+.messenger-shell.theme-dark button.privacy-setting-row:hover,.messenger-shell.theme-dark .privacy-switch-row:hover{background:#202a22}
+.messenger-shell.theme-dark .privacy-setting-value{color:#aab5ab}
+.messenger-shell.theme-dark .privacy-setting-value b{color:#87968a}
+.messenger-shell.theme-dark .privacy-help-text,.messenger-shell.theme-dark .privacy-setting-unavailable,.messenger-shell.theme-dark .privacy-setting-unavailable .privacy-setting-value{color:#9da89e}
+.messenger-shell.theme-dark .privacy-dialog{border-color:#354238;background:#171d18;color:#e4ece5}
+.messenger-shell.theme-dark .privacy-dialog>header button{background:#252e26;color:#c5d0c6}
+.messenger-shell.theme-dark .privacy-dialog>p{color:#a4b0a6}
+.messenger-shell.theme-dark .privacy-dialog>div{border-color:#354238}
+.messenger-shell.theme-dark .privacy-dialog>div>button{border-color:#354238;background:#171d18;color:#e1e9e2}
+.messenger-shell.theme-dark .privacy-dialog>div>button:hover,.messenger-shell.theme-dark .privacy-dialog>div>button.privacy-option-selected{background:#24372a;color:#b5dbbb}
+.messenger-shell.theme-dark .privacy-dialog>div>button b{color:#91c69a}
+@media(max-width:620px){.privacy-setting-row{min-height:49px;padding:0 12px;font-size:11px}.privacy-switch-row{padding:12px}.privacy-help-text{padding:0 12px;font-size:10px}}
+
+.privacy-contact-options{max-height:min(52dvh,390px);overflow:auto}
+.privacy-contact-options>button{justify-content:flex-start!important;gap:10px!important}
+.privacy-contact-avatar{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:50%;background:#e8f1e6;color:#4d7956;font-size:10px;font-weight:700}
+.privacy-contact-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:3px}
+.privacy-contact-copy strong{overflow:hidden;color:#344138;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.privacy-contact-copy small{color:#829087;font-size:9px}
+.privacy-contact-check{width:20px;height:20px;flex:none;display:grid;place-items:center;border:1px solid #d5ded4;border-radius:50%;color:transparent;font-size:12px;font-style:normal}
+.privacy-contact-check-active{border-color:#438a59;background:#e6f2e4;color:#34784b}
+.privacy-no-contacts{padding:14px;color:#7e8880;font-size:11px}
+.privacy-dialog>footer{margin-top:12px;display:flex;justify-content:flex-end;gap:8px}
+.privacy-dialog>footer button{min-height:36px;padding:0 14px;border:1px solid #dce6db;border-radius:999px;background:#fff;color:#536157;font-size:11px;font-weight:650;cursor:pointer}
+.privacy-dialog>footer button:last-child{border-color:#398b60;background:#398b60;color:#fff}
+.privacy-dialog>footer button:disabled{opacity:.5;cursor:not-allowed}
+.messenger-shell.theme-dark .privacy-contact-avatar{background:#294131;color:#b5dbbb}
+.messenger-shell.theme-dark .privacy-contact-copy strong{color:#e2ebe3}
+.messenger-shell.theme-dark .privacy-contact-copy small,.messenger-shell.theme-dark .privacy-no-contacts{color:#a4b0a6}
+.messenger-shell.theme-dark .privacy-contact-check{border-color:#465348}
+.messenger-shell.theme-dark .privacy-contact-check-active{border-color:#71b77c;background:#263d2b;color:#b5dbbb}
+.messenger-shell.theme-dark .privacy-dialog>footer button{border-color:#3a493d;background:#202820;color:#c5d0c6}
+.messenger-shell.theme-dark .privacy-dialog>footer button:last-child{border-color:#397c4c;background:#28623a;color:#e2f1e5}
+.profile-picture-upload{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+
+/* Icon-only profile image picker, styled like the app's raised theme buttons. */
+.profile-picture-upload{width:44px;height:44px;padding:0;display:inline-grid;place-items:center;overflow:hidden;border:1px solid #cfe2cf;border-radius:50%;background:linear-gradient(145deg,#f1f8ef,#deeddd);box-shadow:0 4px 11px #26332318,inset 0 1px 0 #ffffff;color:#398257;cursor:pointer;transition:transform .16s ease,background .16s ease,border-color .16s ease,box-shadow .16s ease,color .16s ease}
+.profile-picture-upload:hover{transform:translateY(-1px);border-color:#b5d2b7;background:linear-gradient(145deg,#f8fcf6,#e4f1e2);box-shadow:0 7px 15px #26332322,inset 0 1px 0 #ffffff;color:#28764a}
+.profile-picture-upload:focus-within{outline:2px solid #79b68b;outline-offset:3px}
+.profile-picture-upload input{cursor:pointer}
+.profile-picture-uploading{opacity:.6;cursor:wait}
+.messenger-shell.theme-dark .profile-picture-upload{border-color:#38513c;background:linear-gradient(145deg,#263a2a,#1b2d20);box-shadow:0 4px 12px #0006,inset 0 1px 0 #ffffff12;color:#b5dbbb}
+.messenger-shell.theme-dark .profile-picture-upload:hover{border-color:#4b7052;background:linear-gradient(145deg,#304936,#203626);box-shadow:0 7px 15px #0007,inset 0 1px 0 #ffffff18;color:#c8e8cd}
+
+/* Give the camera glyph the requested light/dark contrast. */
+.profile-picture-upload{border-color:#328258;background:linear-gradient(145deg,#3b9862,#26784b);box-shadow:0 4px 11px #26332318,inset 0 1px 0 #ffffff30;color:#f8fff9}
+.profile-picture-upload:hover{border-color:#28764b;background:linear-gradient(145deg,#45a56b,#2e8453);color:#fff}
+.messenger-shell.theme-dark .profile-picture-upload{border-color:#b6d2b8;background:linear-gradient(145deg,#edf6ea,#d8e9d5);box-shadow:0 4px 12px #0006,inset 0 1px 0 #ffffff;color:#243329}
+.messenger-shell.theme-dark .profile-picture-upload:hover{border-color:#9fc4a4;background:linear-gradient(145deg,#f6fbf3,#e4f1e1);color:#18251b}
+
+/* Keep the profile picture placeholder and picker surface dark in dark mode. */
+.messenger-shell.theme-dark .profile-picture-preview{border-color:#344238;background:linear-gradient(145deg,#202a22,#151b17);color:#a5d4ad}
+.messenger-shell.theme-dark .profile-picture-upload{border-color:#35483a;background:linear-gradient(145deg,#202a22,#151b17);box-shadow:0 4px 12px #0007,inset 0 1px 0 #ffffff0b;color:#a5d4ad}
+.messenger-shell.theme-dark .profile-picture-upload:hover{border-color:#46614b;background:linear-gradient(145deg,#27372b,#19231c);color:#b5dbbb}

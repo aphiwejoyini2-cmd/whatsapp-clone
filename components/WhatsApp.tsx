@@ -13,7 +13,10 @@ import StatusPage from "@/components/StatusPage";
 
 type Message = { id: string; text: string; sender: "me" | "them"; sentAt: string; audioData?: string; audioType?: string; mediaData?: string; mediaType?: string; mediaName?: string; sharedContact?: { name: string; phone: string }; edited?: boolean; forwarded?: boolean; replyTo?: { id: string; text: string; sender: "me" | "them" } };
 type ChatTheme = "classic" | "sage" | "ocean" | "sunset" | "lavender" | "rose" | "mint" | "slate" | "amber" | "teal" | "sky" | "pink" | "yellow";
-type Settings = { theme: "light" | "dark"; chatTheme: ChatTheme; compactChats: boolean; showPreviews: boolean };
+type PrivacyVisibility = "Everyone" | "My contacts" | "Nobody" | "My contacts except..." | "Only share with...";
+type PrivacyChoiceKey = "lastSeen" | "profilePhoto" | "aboutVisibility" | "linksVisibility" | "groupsVisibility" | "statusVisibility" | "callsVisibility" | "contactsVisibility";
+type PrivacyContactKey = "lastSeenContactIds" | "statusContactIds" | "aboutContactIds" | "profileContactIds" | "linksContactIds" | "groupsContactIds" | "callsContactIds" | "contactsContactIds";
+type Settings = { theme: "light" | "dark"; chatTheme: ChatTheme; compactChats: boolean; showPreviews: boolean; readReceipts: boolean; lastSeen: PrivacyVisibility; profilePhoto: PrivacyVisibility; aboutVisibility: PrivacyVisibility; linksVisibility: PrivacyVisibility; groupsVisibility: PrivacyVisibility; statusVisibility: PrivacyVisibility; callsVisibility: PrivacyVisibility; contactsVisibility: PrivacyVisibility; lastSeenContactIds: string[]; statusContactIds: string[]; aboutContactIds: string[]; profileContactIds: string[]; linksContactIds: string[]; groupsContactIds: string[]; callsContactIds: string[]; contactsContactIds: string[] };
 type Chat = {
   id: string;
   name: string;
@@ -36,7 +39,19 @@ type Chat = {
 
 const STORAGE_KEY = "lingo:chats:v1";
 const SETTINGS_KEY = "lingo:settings:v1";
-const DEFAULT_SETTINGS: Settings = { theme: "light", chatTheme: "classic", compactChats: false, showPreviews: true };
+const DEFAULT_SETTINGS: Settings = { theme: "light", chatTheme: "classic", compactChats: false, showPreviews: true, readReceipts: true, lastSeen: "My contacts", profilePhoto: "My contacts", aboutVisibility: "My contacts", linksVisibility: "My contacts", groupsVisibility: "My contacts", statusVisibility: "My contacts", callsVisibility: "My contacts", contactsVisibility: "My contacts", lastSeenContactIds: [], statusContactIds: [], aboutContactIds: [], profileContactIds: [], linksContactIds: [], groupsContactIds: [], callsContactIds: [], contactsContactIds: [] };
+const PRIVACY_CONTACT_KEYS: Partial<Record<PrivacyChoiceKey, PrivacyContactKey>> = { lastSeen: "lastSeenContactIds", statusVisibility: "statusContactIds", aboutVisibility: "aboutContactIds", profilePhoto: "profileContactIds", linksVisibility: "linksContactIds", groupsVisibility: "groupsContactIds", callsVisibility: "callsContactIds", contactsVisibility: "contactsContactIds" };
+const PRIVACY_VISIBILITY_OPTIONS = ["My contacts", "My contacts except...", "Only share with...", "Nobody"];
+const PRIVACY_CHOICES: { key: PrivacyChoiceKey; label: string; options: string[] }[] = [
+  { key: "lastSeen", label: "Last seen & online", options: PRIVACY_VISIBILITY_OPTIONS },
+  { key: "profilePhoto", label: "Profile picture", options: PRIVACY_VISIBILITY_OPTIONS },
+  { key: "aboutVisibility", label: "About", options: PRIVACY_VISIBILITY_OPTIONS },
+  { key: "linksVisibility", label: "Links", options: PRIVACY_VISIBILITY_OPTIONS },
+  { key: "groupsVisibility", label: "Groups", options: PRIVACY_VISIBILITY_OPTIONS },
+  { key: "statusVisibility", label: "Status", options: PRIVACY_VISIBILITY_OPTIONS },
+  { key: "callsVisibility", label: "Calls", options: PRIVACY_VISIBILITY_OPTIONS },
+  { key: "contactsVisibility", label: "Contacts", options: PRIVACY_VISIBILITY_OPTIONS },
+];
 const LANGUAGES = ["Arabic", "English", "French", "Japanese", "Portuguese", "Spanish", "Other"];
 const PHONE_COUNTRIES = [
   { name: "South Africa", code: "+27" }, { name: "United States", code: "+1" },
@@ -45,7 +60,7 @@ const PHONE_COUNTRIES = [
   { name: "India", code: "+91" }, { name: "France", code: "+33" },
   { name: "Japan", code: "+81" }, { name: "Brazil", code: "+55" },
 ];
-function Icon({ name, size = 20 }: { name: "search" | "plus" | "smile" | "send" | "chat" | "language" | "back" | "close" | "more" | "pin" | "settings" | "phone" | "video" | "mic" | "stop" | "attach" | "edit" | "archive" | "reply" | "copy" | "forward" | "trash"; size?: number }) {
+function Icon({ name, size = 20 }: { name: "search" | "plus" | "smile" | "send" | "chat" | "language" | "back" | "close" | "more" | "pin" | "settings" | "phone" | "video" | "mic" | "stop" | "attach" | "edit" | "archive" | "reply" | "copy" | "forward" | "trash" | "media"; size?: number }) {
   const paths = {
     search: <><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></>,
     plus: <path d="M12 5v14M5 12h14"/>,
@@ -67,6 +82,7 @@ function Icon({ name, size = 20 }: { name: "search" | "plus" | "smile" | "send" 
     copy: <><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></>,
     forward: <><path d="m14 5 7 7-7 7"/><path d="M21 12H10a6 6 0 0 0-6 6"/></>,
     trash: <><path d="M3 6h18M8 6V4h8v2m3 0-1 15H6L5 6m4 4v7m6-7v7"/></>,
+    media: <><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></>,
     pin: <><path d="m16 3 5 5-4 1-4 4 1 4-2 2-3-5-5-5 2-2 4 1 4-4z"/><path d="m2 22 7-7"/></>,
     settings: <><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1a1.7 1.7 0 1 1-2.4 2.4l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.3a1.7 1.7 0 1 1-3.4 0v-.2a1.7 1.7 0 0 0-2.9-1.2l-.1.1a1.7 1.7 0 1 1-2.4-2.4l.1-.1a1.7 1.7 0 0 0-1.2-2.9h-.3a1.7 1.7 0 1 1 0-3.4h.2a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a1.7 1.7 0 1 1 2.4-2.4l.1.1a1.7 1.7 0 0 0 2.9-1.2v-.3a1.7 1.7 0 1 1 3.4 0v.2a1.7 1.7 0 0 0 2.9 1.2l.1-.1a1.7 1.7 0 1 1 2.4 2.4l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.3a1.7 1.7 0 1 1 0 3.4h-.2a1.7 1.7 0 0 0-1.2 2.9z"/></>,
   };
@@ -107,6 +123,8 @@ export default function WhatsApp() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [areSettingsLoaded, setAreSettingsLoaded] = useState(false);
+  const [privacyDialog, setPrivacyDialog] = useState<{ key: PrivacyChoiceKey; label: string; options: string[] } | null>(null);
+  const [privacyContactPicker, setPrivacyContactPicker] = useState<{ key: PrivacyChoiceKey; label: string; mode: PrivacyVisibility; selectedIds: string[] } | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [profileMessage, setProfileMessage] = useState("");
   const [profileUploading, setProfileUploading] = useState(false);
@@ -213,7 +231,21 @@ export default function WhatsApp() {
   useEffect(() => {
     try {
       const storedSettings = window.localStorage.getItem(SETTINGS_KEY);
-      if (storedSettings) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(storedSettings) });
+      if (storedSettings) {
+        const savedSettings = JSON.parse(storedSettings) as Partial<Settings>;
+        setSettings({
+          ...DEFAULT_SETTINGS,
+          ...savedSettings,
+          lastSeen: savedSettings.lastSeen === "Everyone" ? "My contacts" : savedSettings.lastSeen ?? DEFAULT_SETTINGS.lastSeen,
+          profilePhoto: savedSettings.profilePhoto === "Everyone" ? "My contacts" : savedSettings.profilePhoto ?? DEFAULT_SETTINGS.profilePhoto,
+          aboutVisibility: savedSettings.aboutVisibility === "Everyone" ? "My contacts" : savedSettings.aboutVisibility ?? DEFAULT_SETTINGS.aboutVisibility,
+          linksVisibility: savedSettings.linksVisibility === "Everyone" ? "My contacts" : savedSettings.linksVisibility ?? DEFAULT_SETTINGS.linksVisibility,
+          groupsVisibility: savedSettings.groupsVisibility === "Everyone" ? "My contacts" : savedSettings.groupsVisibility ?? DEFAULT_SETTINGS.groupsVisibility,
+          statusVisibility: savedSettings.statusVisibility === "Everyone" ? "My contacts" : savedSettings.statusVisibility ?? DEFAULT_SETTINGS.statusVisibility,
+          callsVisibility: savedSettings.callsVisibility === "Everyone" ? "My contacts" : savedSettings.callsVisibility ?? DEFAULT_SETTINGS.callsVisibility,
+          contactsVisibility: savedSettings.contactsVisibility === "Everyone" ? "My contacts" : savedSettings.contactsVisibility ?? DEFAULT_SETTINGS.contactsVisibility,
+        });
+      }
     } catch {
       window.localStorage.removeItem(SETTINGS_KEY);
     }
@@ -253,6 +285,39 @@ export default function WhatsApp() {
   }, []);
 
   const selectedChat = chats.find((chat) => chat.id === selectedChatId);
+  function choosePrivacyValue(value: string) {
+    if (!privacyDialog) return;
+    const contactKey = PRIVACY_CONTACT_KEYS[privacyDialog.key];
+    if (contactKey && (value === "My contacts except..." || value === "Only share with...")) {
+      setPrivacyContactPicker({ key: privacyDialog.key, label: privacyDialog.label, mode: value, selectedIds: settings[contactKey].filter((id) => chats.some((chat) => chat.id === id)) });
+      setPrivacyDialog(null);
+      return;
+    }
+    setSettings((current) => ({ ...current, [privacyDialog.key]: value } as Settings));
+    setPrivacyDialog(null);
+  }
+  function privacyChoiceDisplay(choice: { key: PrivacyChoiceKey }) {
+    const value = settings[choice.key];
+    const contactKey = PRIVACY_CONTACT_KEYS[choice.key];
+    if (!contactKey || (value !== "My contacts except..." && value !== "Only share with...")) return value;
+    const count = settings[contactKey].filter((id) => chats.some((chat) => chat.id === id)).length;
+    return `${count} ${value === "My contacts except..." ? "Excluded" : "Selected"}`;
+  }
+  function togglePrivacyContact(contactId: string) {
+    setPrivacyContactPicker((current) => current ? {
+      ...current,
+      selectedIds: current.selectedIds.includes(contactId)
+        ? current.selectedIds.filter((id) => id !== contactId)
+        : [...current.selectedIds, contactId],
+    } : null);
+  }
+  function savePrivacyContacts() {
+    if (!privacyContactPicker) return;
+    const contactKey = PRIVACY_CONTACT_KEYS[privacyContactPicker.key];
+    if (!contactKey) return;
+    setSettings((current) => ({ ...current, [privacyContactPicker.key]: privacyContactPicker.mode, [contactKey]: privacyContactPicker.selectedIds } as Settings));
+    setPrivacyContactPicker(null);
+  }
   const filteredChats = useMemo(() => chats
     .filter((chat) => `${chat.name} ${chat.email ?? ""} ${chat.phone}`.toLowerCase().includes(search.toLowerCase()))
     .filter((chat) => activeFilter === "archived" ? chat.archived : !chat.archived && (activeFilter === "all" || (activeFilter === "unread" ? chat.unreadCount > 0 : chat.pinned)))
@@ -610,7 +675,7 @@ export default function WhatsApp() {
               return <div className="conversation-entry" key={chat.id}>
                 <button className={`conversation ${selectedChatId === chat.id ? "conversation-active" : ""} ${chat.unreadCount ? "conversation-unread" : ""}`} onClick={() => openChat(chat.id)}>
                   <span className={`person-avatar person-avatar-${index % 6}`}>{getInitials(chat.name)}</span>
-                  <span className="conversation-copy"><span className="conversation-top"><strong>{chat.name}{chat.pinned && <Icon name="pin" size={12}/>}</strong><time>{formatChatTime(chat)}</time></span><span className="conversation-preview">{settings.showPreviews ? lastMessage ? <>{lastMessage.sender === "me" && <span className="read-check">✓ </span>}{lastMessage.sharedContact ? `Contact: ${lastMessage.sharedContact.name}` : lastMessage.mediaData ? lastMessage.mediaName || "Media" : lastMessage.audioData ? "Voice note" : lastMessage.text}</> : chat.about || "No messages yet" : "Open chat to view messages"}</span></span>
+                  <span className="conversation-copy"><span className="conversation-top"><strong>{chat.name}{chat.pinned && <Icon name="pin" size={12}/>}</strong><time>{formatChatTime(chat)}</time></span><span className="conversation-preview">{settings.showPreviews ? lastMessage ? <>{lastMessage.sender === "me" && settings.readReceipts && <span className="read-check">✓ </span>}{lastMessage.sharedContact ? `Contact: ${lastMessage.sharedContact.name}` : lastMessage.mediaData ? lastMessage.mediaName || "Media" : lastMessage.audioData ? "Voice note" : lastMessage.text}</> : chat.about || "No messages yet" : "Open chat to view messages"}</span></span>
                   {chat.unreadCount > 0 && <span className="unread-count">{chat.unreadCount > 99 ? "99+" : chat.unreadCount}</span>}
                 </button>
                 <button className="conversation-menu-trigger" aria-label={`Chat options for ${chat.name}`} title="Chat options" onClick={() => setOpenMenuChatId((current) => current === chat.id ? null : chat.id)}><Icon name="more" size={17}/></button>
@@ -633,7 +698,7 @@ export default function WhatsApp() {
                 {msg.mediaData && msg.mediaType?.startsWith("video/") && <video className="chat-message-media" controls preload="metadata" src={msg.mediaData} aria-label={msg.mediaName || "Shared video"} />}
                 {msg.mediaData && msg.mediaType?.startsWith("audio/") && <div className="voice-note-content"><Icon name="attach" size={16}/><audio controls preload="metadata" src={msg.mediaData} aria-label={msg.mediaName || "Shared audio"} /></div>}
                 {msg.text && (editingMessageId === msg.id ? <form className="message-edit-form" onSubmit={(event) => saveEditedMessage(event, msg.id)}><textarea aria-label="Edit message text" maxLength={2000} autoFocus value={editingMessageText} onChange={(event) => setEditingMessageText(event.target.value)} /><div><button type="button" onClick={cancelEditMessage}>Cancel</button><button type="submit" disabled={!editingMessageText.trim()}>Save</button></div></form> : <p className={msg.sender === "me" ? "message-editable-text" : ""}>{msg.text}</p>)}
-                <span className="message-meta">{msg.sender === "me" ? "You · " : ""}{new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(msg.sentAt))}{msg.edited && <span>Edited</span>}{msg.sender === "me" && <span className="message-check">✓</span>}</span>
+                <span className="message-meta">{msg.sender === "me" ? "You · " : ""}{new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(msg.sentAt))}{msg.edited && <span>Edited</span>}{msg.sender === "me" && settings.readReceipts && <span className="message-check">✓</span>}</span>
                 {openMessageMenuId === msg.id && <div className="message-action-menu" role="menu" onClick={(event) => event.stopPropagation()}>{messageMenuMoreId === msg.id ? <><div className="message-action-menu-title"><button type="button" onClick={() => { setMessageMenuMoreId(null); setMessageInfoId(null); }}>‹</button><strong>More</strong></div><button role="menuitem" onClick={() => setMessageInfoId((current) => current === msg.id ? null : msg.id)}>Message info <Icon name="more" size={17}/></button>{messageInfoId === msg.id && <div className="message-info-details"><strong>{msg.sender === "me" ? "You" : selectedChat.name}</strong><span>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(msg.sentAt))}</span></div>}</> : <><button role="menuitem" onClick={() => replyToMessage(msg)}>Reply <Icon name="reply" size={19}/></button><button role="menuitem" onClick={() => { void copyMessage(msg); }}>Copy <Icon name="copy" size={19}/></button>{msg.sender === "me" && msg.text && <button role="menuitem" onClick={() => beginEditMessage(msg)}>Edit <Icon name="edit" size={18}/></button>}<button role="menuitem" onClick={() => { setForwardingMessage(msg); setOpenMessageMenuId(null); }}>Forward <Icon name="forward" size={19}/></button><button className="message-action-delete" role="menuitem" onClick={() => deleteMessage(msg.id)}>Delete <Icon name="trash" size={19}/></button><button role="menuitem" onClick={() => setMessageMenuMoreId(msg.id)}>More... <Icon name="more" size={19}/></button></>}</div>}
               </div></div>)}
               {selectedChat.messages.length === 0 && <div className="first-message"><span className="empty-spark">✳</span><p>This is the beginning of your conversation with <strong>{selectedChat.name}</strong>.</p><span>Send a message to say hello.</span></div>}
@@ -664,7 +729,7 @@ export default function WhatsApp() {
         </header>
         <div className="settings-card">
           <div className="settings-card-heading"><div><h2>Profile picture</h2><p>Add or change the photo shown on your profile.</p></div></div>
-          <div className="profile-picture-controls"><span className="profile-picture-preview">{profileImage ? <img src={profileImage} alt="Your profile"/> : "Y"}</span><label className="profile-picture-upload">{profileUploading ? "Uploading…" : profileImage ? "Change picture" : "Choose picture"}<input type="file" accept="image/*" disabled={profileUploading} onChange={(event) => { void uploadProfilePicture(event.currentTarget.files?.[0]); event.currentTarget.value = ""; }}/></label><small>Image up to 5 MB</small></div>
+          <div className="profile-picture-controls"><span className="profile-picture-preview">{profileImage ? <img src={profileImage} alt="Your profile"/> : "Y"}</span><label className={`profile-picture-upload ${profileUploading ? "profile-picture-uploading" : ""}`} aria-label={profileUploading ? "Uploading profile picture" : profileImage ? "Change profile picture" : "Choose profile picture"} title={profileUploading ? "Uploading…" : profileImage ? "Change profile picture" : "Choose profile picture"}><Icon name="media" size={20}/><input type="file" accept="image/*" aria-label="Choose profile picture" disabled={profileUploading} onChange={(event) => { void uploadProfilePicture(event.currentTarget.files?.[0]); event.currentTarget.value = ""; }}/></label><small>Image up to 5 MB</small></div>
           {profileMessage && <p className="profile-picture-message" role="status">{profileMessage}</p>}
         </div>
         <div className="settings-card">
@@ -714,10 +779,28 @@ export default function WhatsApp() {
             <span><strong>Compact layout</strong><small>Show more chats in less space.</small></span>
             <i className={`toggle-track ${settings.compactChats ? "toggle-track-on" : ""}`}><b/></i>
           </button>
-          <button className="setting-toggle-row" role="switch" aria-checked={settings.showPreviews} onClick={() => setSettings((current) => ({ ...current, showPreviews: !current.showPreviews }))}>
+        </div>
+        <div className="settings-card privacy-settings-card">
+          <div className="settings-card-heading">
+            <div><h2>Privacy</h2><p>Control who can see your information and how messages behave.</p></div>
+            <Icon name="settings" size={19}/>
+          </div>
+          <div className="privacy-settings-list">
+            {PRIVACY_CHOICES.slice(0, 6).map((choice) => <button className="privacy-setting-row" key={choice.key} onClick={() => setPrivacyDialog(choice)}><span>{choice.label}</span><span className="privacy-setting-value">{privacyChoiceDisplay(choice)}<b>›</b></span></button>)}
+          </div>
+          <button className="setting-toggle-row privacy-switch-row" role="switch" aria-checked={settings.readReceipts} onClick={() => setSettings((current) => ({ ...current, readReceipts: !current.readReceipts }))}>
+            <span><strong>Read receipts</strong><small>Show the sent check mark on your messages. This demo does not report whether another person has read a message.</small></span>
+            <i className={`toggle-track ${settings.readReceipts ? "toggle-track-on" : ""}`}><b/></i>
+          </button>
+          <div className="privacy-settings-list privacy-secondary-list">
+            <div className="privacy-setting-row privacy-setting-unavailable"><span>Live location</span><span className="privacy-setting-value">None<b>›</b></span></div>
+            {PRIVACY_CHOICES.slice(6, 8).map((choice) => <button className="privacy-setting-row" key={choice.key} onClick={() => setPrivacyDialog(choice)}><span>{choice.label}</span><span className="privacy-setting-value">{privacyChoiceDisplay(choice)}<b>›</b></span></button>)}
+          </div>
+          <button className="setting-toggle-row privacy-switch-row" role="switch" aria-checked={settings.showPreviews} onClick={() => setSettings((current) => ({ ...current, showPreviews: !current.showPreviews }))}>
             <span><strong>Message previews</strong><small>Show the latest message in the chat list.</small></span>
             <i className={`toggle-track ${settings.showPreviews ? "toggle-track-on" : ""}`}><b/></i>
           </button>
+          <p className="privacy-help-text">Privacy choices are saved in this browser. Visibility settings do not take effect across other accounts until account sharing is connected.</p>
         </div>
       </section>}
       </div>
@@ -741,6 +824,8 @@ export default function WhatsApp() {
       </div>}
       {activeCall && selectedChat && <CallWindow overlay contactName={selectedChat.name} callType={activeCall} onClose={() => setActiveCall(null)} />}
       {confirmDeleteContactId && <div className="modal-backdrop confirm-backdrop"><section className="delete-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-contact-title"><h2 id="delete-contact-title">Delete this contact?</h2><p>This will remove the contact and its chat from this browser. This action cannot be undone.</p><div><button className="cancel-button" onClick={() => setConfirmDeleteContactId(null)}>Cancel</button><button className="confirm-delete-button" onClick={() => deleteContact(confirmDeleteContactId)}>Delete contact</button></div></section></div>}
+      {privacyDialog && <div className="privacy-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setPrivacyDialog(null); }}><section className="privacy-dialog" role="dialog" aria-modal="true" aria-labelledby="privacy-dialog-title"><header><h2 id="privacy-dialog-title">{privacyDialog.label}</h2><button type="button" aria-label="Close" onClick={() => setPrivacyDialog(null)}>×</button></header><p>Choose your preference</p><div>{privacyDialog.options.map((option) => <button type="button" key={option} aria-pressed={settings[privacyDialog.key] === option} className={settings[privacyDialog.key] === option ? "privacy-option-selected" : ""} onClick={() => choosePrivacyValue(option)}><span>{option}</span>{settings[privacyDialog.key] === option && <b>✓</b>}</button>)}</div></section></div>}
+      {privacyContactPicker && <div className="privacy-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setPrivacyContactPicker(null); }}><section className="privacy-dialog privacy-contact-dialog" role="dialog" aria-modal="true" aria-labelledby="privacy-contact-title"><header><h2 id="privacy-contact-title">{privacyContactPicker.mode === "Only share with..." ? "Share with selected contacts" : "Exclude contacts"}</h2><button type="button" aria-label="Close" onClick={() => setPrivacyContactPicker(null)}>×</button></header><p>{privacyContactPicker.mode === "Only share with..." ? `Choose who can view your ${privacyContactPicker.label.toLowerCase()}.` : `Choose contacts who cannot view your ${privacyContactPicker.label.toLowerCase()}.`}</p><div className="privacy-contact-options">{chats.map((chat) => <button type="button" key={chat.id} aria-pressed={privacyContactPicker.selectedIds.includes(chat.id)} className={privacyContactPicker.selectedIds.includes(chat.id) ? "privacy-option-selected" : ""} onClick={() => togglePrivacyContact(chat.id)}><span className="privacy-contact-avatar">{getInitials(chat.name)}</span><span className="privacy-contact-copy"><strong>{chat.name}</strong><small>{chat.phone}</small></span><i className={privacyContactPicker.selectedIds.includes(chat.id) ? "privacy-contact-check privacy-contact-check-active" : "privacy-contact-check"}>{privacyContactPicker.selectedIds.includes(chat.id) ? "✓" : ""}</i></button>)}{chats.length === 0 && <p className="privacy-no-contacts">Add a contact before choosing who can view this information.</p>}</div><footer><button type="button" onClick={() => setPrivacyContactPicker(null)}>Cancel</button><button type="button" onClick={savePrivacyContacts} disabled={chats.length === 0}>Save</button></footer></section></div>}
     {forwardingMessage && <div className="message-forward-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setForwardingMessage(null); }}><section className="message-forward-dialog" role="dialog" aria-modal="true" aria-labelledby="forward-message-title"><header><div><span className="eyebrow">SHARE MESSAGE</span><h2 id="forward-message-title">Forward message</h2></div><button type="button" aria-label="Close" onClick={() => setForwardingMessage(null)}>×</button></header><p className="forward-message-preview">{forwardingMessage.text || forwardingMessage.mediaName || (forwardingMessage.audioData ? "Voice note" : "Media message")}</p><strong className="forward-recipient-label">Choose a chat</strong><div className="forward-recipient-list">{chats.map((chat) => <button type="button" key={chat.id} onClick={() => forwardMessageTo(chat.id)}><span className="person-avatar">{getInitials(chat.name)}</span><span><strong>{chat.name}</strong><small>{chat.phone}</small></span><Icon name="forward" size={17}/></button>)}</div></section></div>}
     </main>
   );
