@@ -92,6 +92,12 @@ function formatChatTime(chat: Chat) {
 
 export default function WhatsApp() {
   const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
+  const [currentUserId, setCurrentUserId] = useState("");
+  const [accountPhone, setAccountPhone] = useState("");
+  const [phoneSaveStatus, setPhoneSaveStatus] = useState("");
+  const [dbConversationId, setDbConversationId] = useState("");
+  const [dbStatus, setDbStatus] = useState("");
   const [chats, setChats] = useState<Chat[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
@@ -237,6 +243,34 @@ export default function WhatsApp() {
   }, []);
 
   const selectedChat = chats.find((chat) => chat.id === selectedChatId);
+  useEffect(() => {
+    let alive = true;
+    void supabase.auth.getUser().then(({ data, error }) => { if (!alive) return; if (error) setDbStatus(error.message); setCurrentUserId(data.user?.id ?? ""); setAccountPhone(String(data.user?.user_metadata.phone_e164 ?? "")); });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => { setCurrentUserId(session?.user.id ?? ""); setAccountPhone(String(session?.user.user_metadata.phone_e164 ?? "")); });
+    return () => { alive = false; listener.subscription.unsubscribe(); };
+  }, [supabase]);
+  useEffect(() => {
+    let alive = true; setDbConversationId("");
+    if (!selectedChat?.phone || !currentUserId) return;
+    void (async () => {
+      const phone = selectedChat.phone.replace(/[^+\d]/g, "");
+      const { data, error } = await supabase.rpc("find_simple_message_recipient", { phone_value: phone }); if (error) throw error;
+      const recipient = data?.[0] as { user_id: string } | undefined; if (!recipient) throw new Error("No registered account found. Ask them to sign up with this phone number first.");
+      const { data: conversationId, error: conversationError } = await supabase.rpc("get_or_create_simple_conversation", { target_user_id: recipient.user_id }); if (conversationError) throw conversationError;
+      if (!alive) return; setDbConversationId(conversationId as string); setDbStatus("");
+    })().catch((error: unknown) => { if (alive) setDbStatus(error instanceof Error ? error.message : "Could not open database conversation."); });
+    return () => { alive = false; };
+  }, [selectedChat?.phone, currentUserId, supabase]);
+  useEffect(() => {
+    if (!dbConversationId || !selectedChatId) return; let alive = true;
+    const load = async () => {
+      const { data, error } = await supabase.from("simple_messages").select("id, sender_id, body, created_at").eq("conversation_id", dbConversationId).order("created_at", { ascending: true }).limit(200);
+      if (error) { if (alive) setDbStatus(error.message); return; } if (!alive) return;
+      const rows = data ?? []; setChats(current => current.map(chat => chat.id === selectedChatId ? { ...chat, messages: rows.map(row => ({ id: row.id, text: row.body, sender: row.sender_id === currentUserId ? "me" as const : "them" as const, sentAt: row.created_at })) } : chat));
+    };
+    const channel = supabase.channel(`wa-chat:${dbConversationId}`).on("postgres_changes", { event: "INSERT", schema: "public", table: "simple_messages", filter: `conversation_id=eq.${dbConversationId}` }, () => { void load(); }).subscribe();
+    void load(); return () => { alive = false; void supabase.removeChannel(channel); };
+  }, [dbConversationId, selectedChatId, currentUserId, supabase]);
   const filteredChats = useMemo(() => chats
     .filter((chat) => `${chat.name} ${chat.email ?? ""} ${chat.phone}`.toLowerCase().includes(search.toLowerCase()))
     .filter((chat) => activeFilter === "all" || (activeFilter === "unread" ? chat.unreadCount > 0 : chat.pinned))
@@ -279,8 +313,8 @@ export default function WhatsApp() {
     const mobile = String(formData.get("mobile") ?? "").trim().replace(/\D/g, "").replace(/^0+/, "");
     const phone = mobile ? `${countryCode} ${mobile}`.trim() : "";
     const digits = phone.replace(/\D/g, "");
-    if (!firstName || (!editingContactId && !email) || (mobile && digits.length < 7)) {
-      setFormError("Enter a name and the email they use for this app. If you add a phone number, check that it has at least 7 digits.");
+    if (!firstName || (!editingContactId && (!mobile || digits.length < 8))) {
+      setFormError("Enter a name and the phone number they use to sign in, including the country code.");
       return;
     }
     if (email && chats.some((chat) => chat.id !== editingContactId && chat.email?.toLowerCase() === email)) {
@@ -317,7 +351,7 @@ export default function WhatsApp() {
     setIsContactModalOpen(false);
     setFormError("");
     setSearch("");
-    if (!editingContactId) router.push(`/messages?email=${encodeURIComponent(email)}`);
+    if (!editingContactId) setDbStatus("Looking up the registered account…");
   }
 
   function deleteContact(contactId: string) {
@@ -423,10 +457,18 @@ export default function WhatsApp() {
     if (editingMessageId === messageId) cancelEditMessage();
   }
 
-  function sendMessage(event?: FormEvent<HTMLFormElement>) {
+  async function sendMessage(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     const text = message.trim();
     if ((!text && !chatMediaData) || !selectedChatId) return;
+    if (!currentUserId) { router.push(`/login?next=${encodeURIComponent("/")}`); return; }
+    if (selectedChat?.phone) {
+      if (!dbConversationId) { setDbStatus(dbStatus || "Waiting for account lookup."); return; }
+      if (chatMediaData) { setDbStatus("Database chat currently supports text messages only."); return; }
+      const { error } = await supabase.from("simple_messages").insert({ conversation_id: dbConversationId, sender_id: currentUserId, body: text });
+      if (error) { setDbStatus(error.message); return; }
+      setMessage(""); setDbStatus(""); return;
+    }
     const sentAt = new Date().toISOString();
     setChats((current) => current.map((chat) => chat.id === selectedChatId ? { ...chat, time: "Now", unreadCount: 0, messages: [...chat.messages, { id: crypto.randomUUID(), text, sender: "me", sentAt, ...(chatMediaData ? { mediaData: chatMediaData, mediaType: chatMediaType, mediaName: chatMediaName } : {}) }] } : chat));
     setMessage("");
@@ -485,6 +527,15 @@ export default function WhatsApp() {
   }
 
   function openChat(chatId: string) {
+    const contact = chats.find((chat) => chat.id === chatId);
+    if (contact?.phone) {
+      setSelectedChatId(chatId);
+      setChats((current) => current.map((chat) => chat.id === chatId ? { ...chat, unreadCount: 0 } : chat));
+      setOpenMenuChatId(null);
+      setActiveSection("chats");
+      setMobileOpenChat(true);
+      return;
+    }
     setSelectedChatId(chatId);
     setChats((current) => current.map((chat) => chat.id === chatId ? { ...chat, unreadCount: 0 } : chat));
     setOpenMenuChatId(null);
@@ -504,6 +555,15 @@ export default function WhatsApp() {
       if (typeof avatar === "string") setProfileImage(avatar);
     });
   }, []);
+
+  async function saveMessagingPhone(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!currentUserId) { router.push(`/login?next=${encodeURIComponent("/")}`); return; }
+    const normalized = accountPhone.trim().replace(/[^+\d]/g, "");
+    if (!/^\+[1-9]\d{7,14}$/.test(normalized)) { setPhoneSaveStatus("Enter a valid number in international format, such as +27821234567."); return; }
+    const { error } = await supabase.auth.updateUser({ data: { phone_e164: normalized } });
+    setPhoneSaveStatus(error ? error.message : "Number registered. You can now be found by other accounts.");
+  }
 
   async function uploadProfilePicture(file?: File) {
     if (!file) return;
@@ -574,6 +634,7 @@ export default function WhatsApp() {
         <section className={`conversation-panel ${mobileOpenChat ? "conversation-panel-mobile-open" : ""}`} aria-label="Conversation">
           {selectedChat ? <>
             <header className="conversation-header"><button className="mobile-back" onClick={() => setMobileOpenChat(false)} aria-label="Back to contacts"><Icon name="back"/></button><div className="contact-summary"><span className="person-avatar person-avatar-large">{getInitials(selectedChat.name)}</span><span><strong>{selectedChat.name}</strong><small>{selectedChat.phone}</small></span></div><div className="conversation-call-actions"><button className="call-action-button" onClick={() => setActiveCall("voice")} aria-label={`Voice call ${selectedChat.name}`} title="Voice call"><Icon name="phone" size={17}/></button><button className="call-action-button" onClick={() => setActiveCall("video")} aria-label={`Video call ${selectedChat.name}`} title="Video call"><Icon name="video" size={18}/></button><button className="edit-contact-button" onClick={() => openEditContact(selectedChat.id)}>Edit</button></div></header>
+            {dbStatus && <p role="status" className="voice-note-error">{dbStatus}</p>}
             <div className={`chat-canvas chat-theme-${settings.chatTheme}`}><div className="day-divider"><span>Today</span></div><div className="message-stack">
               {selectedChat.messages.map((msg) => <div key={msg.id} className={`message-row ${msg.sender === "me" ? "message-row-me" : ""}`}><div className={`message-bubble ${msg.sender === "me" ? "message-bubble-me" : "message-bubble-them"}`}>
                 {msg.audioData && <div className="voice-note-content"><Icon name="mic" size={16}/><audio controls preload="metadata" src={msg.audioData} aria-label="Voice note playback" /></div>}
@@ -612,6 +673,11 @@ export default function WhatsApp() {
           <h1>Settings<span className="heading-period">.</span></h1>
           <p>Your preferences are saved in this browser.</p>
         </header>
+        <div className="settings-card">
+          <div className="settings-card-heading"><div><h2>Messaging phone number</h2><p>Register the number other signed-up accounts will use to find you.</p></div></div>
+          <form onSubmit={saveMessagingPhone} className="contact-form"><label>Phone number<input type="tel" autoComplete="tel" value={accountPhone} onChange={(event) => setAccountPhone(event.target.value)} placeholder="+27821234567" required /></label><button type="submit">Save number</button></form>
+          {phoneSaveStatus && <p role="status">{phoneSaveStatus}</p>}
+        </div>
         <div className="settings-card">
           <div className="settings-card-heading"><div><h2>Profile picture</h2><p>Add or change the photo shown on your profile.</p></div></div>
           <div className="profile-picture-controls"><span className="profile-picture-preview">{profileImage ? <img src={profileImage} alt="Your profile"/> : "Y"}</span><label className="profile-picture-upload">{profileUploading ? "Uploading…" : profileImage ? "Change picture" : "Choose picture"}<input type="file" accept="image/*" disabled={profileUploading} onChange={(event) => { void uploadProfilePicture(event.currentTarget.files?.[0]); event.currentTarget.value = ""; }}/></label><small>Image up to 5 MB</small></div>
@@ -676,12 +742,12 @@ export default function WhatsApp() {
         <section className="contact-modal edit-contact-modal" role="dialog" aria-modal="true" aria-labelledby="contact-modal-title">
           <header className="contact-modal-heading"><button className="modal-cancel-link" onClick={closeContactModal}>Cancel</button><h2 id="contact-modal-title">{editingContact ? "Edit contact" : "Add contact"}</h2><button className="modal-done-link" type="submit" form="contact-details-form">{editingContact ? "Save" : "Save & message"}</button></header>
           <form id="contact-details-form" className="contact-form" onSubmit={saveContact}>
-            {!editingContact && <p className="contact-save-note">Enter the email they use to sign in. They need an account with a confirmed email. The phone number is optional contact information.</p>}
+            {!editingContact && <p className="contact-save-note">Enter the phone number they registered for messaging. It is only used as an account identifier; no SMS verification is sent.</p>}
             <div className="contact-name-fields"><label>First name<input autoFocus name="firstName" placeholder="First name" required maxLength={60} defaultValue={editingNameParts[0] ?? ""}/></label><label>Last name<input name="lastName" placeholder="Last name" maxLength={60} defaultValue={editingNameParts.slice(1).join(" ")}/></label></div>
-            <label className="contact-username-label">Account email<input name="email" type="email" placeholder="friend@example.com" required={!editingContact} defaultValue={editingContact?.email ?? ""}/></label>
+            <label className="contact-username-label">Email (optional)<input name="email" type="email" placeholder="friend@example.com" defaultValue={editingContact?.email ?? ""}/></label>
             <label className="contact-username-label">Username<input name="username" placeholder="Username" maxLength={30} defaultValue={editingContact?.username ?? ""}/></label>
-            {!editingContact && <p>Use the email they sign in with. They need an account and a confirmed email. Phone is optional.</p>}
-            <div className="contact-phone-fields"><label>Country<select name="countryCode" defaultValue={editingCountryCode}>{PHONE_COUNTRIES.map((country) => <option value={country.code} key={country.code}>{country.name} ({country.code})</option>)}</select></label><label>Mobile (optional)<input name="mobile" type="tel" placeholder="Mobile number" minLength={7} autoComplete="tel-national" defaultValue={editingMobile}/></label></div>
+            {!editingContact && <p>Choose their country and enter their mobile number. The full number is used to find their account.</p>}
+            <div className="contact-phone-fields"><label>Country<select name="countryCode" defaultValue={editingCountryCode}>{PHONE_COUNTRIES.map((country) => <option value={country.code} key={country.code}>{country.name} ({country.code})</option>)}</select></label><label>Mobile<input name="mobile" type="tel" placeholder="Mobile number" minLength={7} autoComplete="tel-national" defaultValue={editingMobile}/></label></div>
             <div className="sync-phone-row"><span><strong>Sync contact to phone</strong><small>Device contact sync is not available in the browser.</small></span><input type="checkbox" role="switch" aria-label="Sync contact to phone" disabled checked={false} readOnly/></div>
             <details className="language-details" open={Boolean(editingContact?.nativeLanguage || editingContact?.learningLanguage)}><summary>Language exchange details <span>Optional</span></summary><div className="language-selects"><label>Speaks<select name="nativeLanguage" defaultValue={editingContact?.nativeLanguage ?? ""}><option value="">Select a language</option>{LANGUAGES.map((language) => <option key={language}>{language}</option>)}</select></label><label>Learning<select name="learningLanguage" defaultValue={editingContact?.learningLanguage ?? ""}><option value="">Select a language</option>{LANGUAGES.map((language) => <option key={language}>{language}</option>)}</select></label></div></details>
             {formError && <p className="form-error" role="alert">{formError}</p>}

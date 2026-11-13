@@ -1,0 +1,11 @@
+{"timestamp":"00:00:06.873","source":"Server","level":"LOG","message":""}
+{"timestamp":"00:00:06.874","source":"Server","level":"LOG","message":"  We detected TypeScript in your project and reconfigured your tsconfig.json file for you."}
+{"timestamp":"00:00:06.874","source":"Server","level":"LOG","message":"  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:\n"}
+{"timestamp":"00:00:06.875","source":"Server","level":"LOG","message":"  \t- include was updated to add '.next-messaging/types/**/*.ts'"}
+{"timestamp":"00:00:06.875","source":"Server","level":"LOG","message":"  \t- include was updated to add '.next-messaging/dev/types/**/*.ts'"}
+{"timestamp":"00:00:06.875","source":"Server","level":"LOG","message":""}
+{"timestamp":"00:00:08.204","source":"Server","level":"LOG","message":"- Cache Components enabled"}
+{"timestamp":"00:00:08.204","source":"Server","level":"LOG","message":"- Partial Prefetching enabled"}
+{"timestamp":"00:00:08.205","source":"Server","level":"LOG","message":"- Experiments (use with caution):"}
+{"timestamp":"00:00:08.205","source":"Server","level":"LOG","message":"  ✓ agentFeedback"}
+{"timestamp":"00:00:08.205","source":"Server","level":"LOG","message":""}

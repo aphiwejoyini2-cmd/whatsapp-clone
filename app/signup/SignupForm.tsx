@@ -7,237 +7,63 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function SignupForm() {
   const router = useRouter();
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [otp, setOtp] = useState("");
-
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
   const [loading, setLoading] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  function getPasswordStrength() {
-    if (password.length === 0) {
-      return "";
-    }
-
-    if (password.length < 6) {
-      return "Weak";
-    }
-
-    if (password.length < 10) {
-      return "Medium";
-    }
-
-    return "Strong";
-  }
-
   async function handleSignup(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     setError("");
     setMessage("");
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+    const normalizedPhone = phone.trim().replace(/[\s()-]/g, "");
+    if (!/^\+[1-9]\d{7,14}$/.test(normalizedPhone)) {
+      setError("Enter a phone number in international format, for example +27821234567.");
       return;
     }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
-      return;
-    }
-
-    if (!/^\+[1-9]\d{7,14}$/.test(phone.trim())) {
-      setError("Enter your number in international format, for example +27821234567.");
-      return;
-    }
+    if (password !== confirmPassword) { setError("Passwords do not match."); return; }
+    if (password.length < 8) { setError("Use a password with at least 8 characters."); return; }
 
     setLoading(true);
-
     const supabase = createClient();
-
-    const { error } = await supabase.auth.signUp({
-      phone: phone.trim(),
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email: email.trim().toLowerCase(),
       password,
-      options: { channel: "sms" },
+      options: { data: { phone_e164: normalizedPhone } },
     });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
+    setLoading(false);
+    if (signUpError) { setError(signUpError.message); return; }
+    if (data.session) {
+      router.replace("/messages");
+      router.refresh();
+    } else {
+      setMessage("Account created. Check your email if Supabase asks you to confirm it, then log in. No SMS was sent.");
     }
-
-    setOtpSent(true);
-    setMessage(`We sent a verification code to ${phone.trim()}.`);
-
-    setLoading(false);
   }
 
-  async function handleVerifyOtp(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setMessage("");
-    setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.verifyOtp({ phone: phone.trim(), token: otp.trim(), type: "sms" });
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-      return;
-    }
-    router.replace("/messages");
-    router.refresh();
-  }
-
-  async function resendOtp() {
-    setError("");
-    setMessage("");
-    setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.resend({ type: "sms", phone: phone.trim() });
-    setLoading(false);
-    if (error) setError(error.message);
-    else setMessage(`A new code was sent to ${phone.trim()}.`);
-  }
-
-  const passwordStrength = getPasswordStrength();
-
-  return (
-    <main className="auth-page">
-      <div className="auth-card">
-        <header className="auth-heading">
-          <Link href="/login" className="auth-heading-link">Log in</Link>
-          <div className="auth-heading-brand"><span className="auth-logo" aria-hidden="true">💬</span><h1>{otpSent ? "Verify your number" : "Create account"}</h1></div>
-          <span className="auth-heading-note">WhatsApp Clone</span>
-        </header>
-        <div className="auth-content">
-        <p className="auth-subtitle">{otpSent ? `Enter the SMS code sent to ${phone}.` : "Sign up with your phone number and verify it by SMS."}</p>
-
-        {otpSent ? <form onSubmit={handleVerifyOtp} className="auth-form">
-          <div className="form-group">
-            <label htmlFor="otp">Verification code</label>
-            <input id="otp" type="text" inputMode="numeric" autoComplete="one-time-code" placeholder="Enter SMS code" value={otp}
-              onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 8))} required />
-          </div>
+  return <main className="auth-page">
+    <div className="auth-card">
+      <header className="auth-heading">
+        <Link href="/login" className="auth-heading-link">Log in</Link>
+        <div className="auth-heading-brand"><span className="auth-logo" aria-hidden="true">💬</span><h1>Create account</h1></div>
+        <span className="auth-heading-note">WhatsApp Clone</span>
+      </header>
+      <div className="auth-content">
+        <p className="auth-subtitle">Use email and password to create an account. Your phone number is only used to find you in chats.</p>
+        <form onSubmit={handleSignup} className="auth-form">
+          <div className="form-group"><label htmlFor="email">Email</label><input id="email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></div>
+          <div className="form-group"><label htmlFor="phone">Phone number for messaging</label><input id="phone" type="tel" autoComplete="tel" placeholder="+27821234567" value={phone} onChange={(event) => setPhone(event.target.value)} required /><small className="auth-field-hint">This number is not verified and no SMS is sent.</small></div>
+          <div className="form-group"><label htmlFor="password">Password</label><input id="password" type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required /></div>
+          <div className="form-group"><label htmlFor="confirmPassword">Confirm password</label><input id="confirmPassword" type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></div>
           {error && <div className="auth-message auth-error" role="alert">{error}</div>}
           {message && <div className="auth-message auth-success" role="status">{message}</div>}
-          <button type="submit" className="auth-submit" disabled={loading || !otp.trim()}>{loading ? "Verifying…" : "Verify number"}</button>
-          <button type="button" className="auth-resend" onClick={() => void resendOtp()} disabled={loading}>{loading ? "Sending…" : "Resend code"}</button>
-        </form> : <form onSubmit={handleSignup} className="auth-form">
-
-          <div className="form-group">
-            <label htmlFor="phone">Mobile number</label>
-            <input
-              id="phone"
-              type="tel"
-              autoComplete="tel"
-              placeholder="+27821234567"
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              required
-            />
-            <small className="auth-field-hint">Use international format with country code.</small>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-
-            <div className="password-wrapper">
-              <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Create a password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
-
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? "Hide" : "Show"}
-              </button>
-            </div>
-
-            {password && (
-              <div className="password-strength">
-                <div className="strength-bar">
-                  <div
-                    className={`strength-fill ${passwordStrength.toLowerCase()}`}
-                  />
-                </div>
-
-                <span>
-                  Password strength: {passwordStrength}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="confirmPassword">
-              Confirm password
-            </label>
-
-            <div className="password-wrapper">
-              <input
-                id="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                placeholder="Confirm your password"
-                value={confirmPassword}
-                onChange={(event) =>
-                  setConfirmPassword(event.target.value)
-                }
-                required
-              />
-
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() =>
-                  setShowConfirmPassword(!showConfirmPassword)
-                }
-              >
-                {showConfirmPassword ? "Hide" : "Show"}
-              </button>
-            </div>
-          </div>
-
-          {error && (
-            <div className="auth-message auth-error">
-              {error}
-            </div>
-          )}
-
-          {message && (
-            <div className="auth-message auth-success">
-              {message}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            className="auth-submit"
-            disabled={loading}
-          >
-            {loading ? "Creating account..." : "Create Account"}
-          </button>
-        </form>}
-
-        <p className="auth-footer">
-          Already have an account?{" "}
-          <Link href="/login">Log in</Link>
-        </p>
-        </div>
+          <button type="submit" className="auth-submit" disabled={loading}>{loading ? "Creating account…" : "Create account"}</button>
+        </form>
+        <p className="auth-footer">Already have an account? <Link href="/login">Log in</Link></p>
       </div>
-    </main>
-  );
+    </div>
+  </main>;
 }
