@@ -2,8 +2,8 @@ export type CallLogEntry = {
   id: string;
   contactName: string;
   type: "voice" | "video";
-  direction: "outgoing";
-  status: "ended" | "failed";
+  direction: "outgoing" | "incoming";
+  status: "ended" | "failed" | "missed";
   startedAt: string;
   endedAt: string;
   durationSeconds: number;

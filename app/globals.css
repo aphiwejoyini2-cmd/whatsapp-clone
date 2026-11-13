@@ -451,3 +451,32 @@
 .messenger-shell.theme-dark .message-action-menu>button.message-action-delete svg{color:#a8c1aa}
 .messenger-shell.theme-dark .message-action-menu>button.message-action-delete:hover{background:#293b2d;color:#bde3c3}
 .messenger-shell.theme-dark .message-action-menu>button.message-action-delete:hover svg{color:#a8c1aa}
+
+/* Call log filters use the app's raised, rounded pill button style. */
+.call-log-filters{padding:4px;gap:4px;border:1px solid #dce8dc;border-radius:999px;background:linear-gradient(145deg,#f8fbf6,#edf4eb);box-shadow:0 4px 12px #26332312,inset 0 1px 0 #ffffff}
+.call-log-filters button{min-height:30px;padding:0 13px;border:1px solid transparent;border-radius:999px;background:transparent;color:#718073;font-size:10px;font-weight:600;transition:background .16s ease,border-color .16s ease,box-shadow .16s ease,color .16s ease}
+.call-log-filters button:hover{border-color:#d7e7d5;background:#fff;color:#397b50;box-shadow:0 3px 8px #26332315,inset 0 1px 0 #ffffff}
+.call-log-filters button.call-log-filter-active{border-color:#d4e5d1;background:linear-gradient(145deg,#e8f3e6,#dcebd9);box-shadow:0 2px 6px #26332316,inset 0 1px 0 #ffffff;color:#34784b;font-weight:700}
+.call-log-filters button:focus-visible{outline:2px solid #6ea77b;outline-offset:2px}
+.messenger-shell.theme-dark .call-log-filters{border-color:#344739;background:linear-gradient(145deg,#1c261e,#131a15);box-shadow:0 4px 13px #0007,inset 0 1px 0 #ffffff0a}
+.messenger-shell.theme-dark .call-log-filters button{color:#aab9ac}
+.messenger-shell.theme-dark .call-log-filters button:hover{border-color:#3b5942;background:#26352a;color:#c2e2c6;box-shadow:0 3px 9px #0005,inset 0 1px 0 #ffffff0b}
+.messenger-shell.theme-dark .call-log-filters button.call-log-filter-active{border-color:#3c6045;background:linear-gradient(145deg,#294231,#1d3224);box-shadow:0 3px 8px #0005,inset 0 1px 0 #ffffff0b;color:#b9e0bf}
+
+.call-log-filters{max-width:100%;flex-wrap:wrap}
+@media(max-width:760px){.call-log-toolbar{align-items:flex-start;flex-direction:column;padding:12px 14px}.call-log-filters{width:100%;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.call-log-filters::-webkit-scrollbar{display:none}.call-log-filters button{flex:none}}
+
+/* Theme-aware raised pill for the call count badge. */
+.call-log-total{padding:8px 13px;border:1px solid #dce8dc;border-radius:999px;background:linear-gradient(145deg,#f8fbf6,#eaf3e8);box-shadow:0 4px 11px #26332316,inset 0 1px 0 #ffffff;color:#397b50;font-weight:650;transition:background .16s ease,border-color .16s ease,box-shadow .16s ease,color .16s ease}
+.messenger-shell.theme-dark .call-log-total{border-color:#344739;background:linear-gradient(145deg,#1e2b21,#142018);box-shadow:0 4px 12px #0007,inset 0 1px 0 #ffffff0b;color:#b5dbbb}
+
+/* Wallet payment action: raised green pill in both appearance themes. */
+.wallet-send-button{height:42px;padding:0 18px;border:1px solid #39895a;border-radius:999px;background:linear-gradient(145deg,#3b9a63,#26794c);box-shadow:0 5px 13px #20663c30,inset 0 1px 0 #ffffff30;color:#fff;font-weight:700;transition:transform .16s ease,background .16s ease,border-color .16s ease,box-shadow .16s ease}
+.wallet-send-button:hover:not(:disabled){transform:translateY(-1px);border-color:#26784a;background:linear-gradient(145deg,#43a56c,#2d8454);box-shadow:0 7px 16px #20663c38,inset 0 1px 0 #ffffff38}
+.wallet-send-button:active:not(:disabled){transform:translateY(0);box-shadow:0 2px 6px #20663c30,inset 0 2px 4px #17482c30}
+.wallet-send-button:focus-visible{outline:2px solid #79b68b;outline-offset:3px}
+.wallet-send-button:disabled{border-color:#8fb69a;background:linear-gradient(145deg,#b7d4bd,#a6c9ae);box-shadow:0 3px 9px #315c391a,inset 0 1px 0 #ffffff70;color:#f7fbf7;opacity:1;cursor:not-allowed}
+.wallet-theme-dark .wallet-send-button{border-color:#397c4c;background:linear-gradient(145deg,#28623a,#1d4d2e);box-shadow:0 5px 14px #0006,inset 0 1px 0 #ffffff16;color:#e2f1e5}
+.wallet-theme-dark .wallet-send-button:hover:not(:disabled){border-color:#4a965c;background:linear-gradient(145deg,#327747,#245d36);box-shadow:0 7px 17px #0007,inset 0 1px 0 #ffffff20}
+.wallet-theme-dark .wallet-send-button:active:not(:disabled){box-shadow:0 2px 6px #0006,inset 0 2px 4px #10281780}
+.wallet-theme-dark .wallet-send-button:disabled{border-color:#304a36;background:linear-gradient(145deg,#263b2b,#1d3022);box-shadow:0 3px 9px #0005,inset 0 1px 0 #ffffff0c;color:#91ad96}
