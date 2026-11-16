@@ -1,4 +1,4 @@
-type NavigationIconName = "chats" | "language" | "status" | "call-log" | "settings" | "logout" | "wallet" | "send";
+    type NavigationIconName = "chats" | "language" | "status" | "call-log" | "settings" | "logout" | "wallet" | "send";
 
 export default function NavigationIcon({
   name,
