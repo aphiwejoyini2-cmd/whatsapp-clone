@@ -1,5 +1,5 @@
-import WhatsApp from "@/components/WhatsApp";
+import LoginForm from "./login/LoginForm";
 
-export default function Home() {
-  return <WhatsApp />;
+export default function HomePage() {
+  return <LoginForm />;
 }

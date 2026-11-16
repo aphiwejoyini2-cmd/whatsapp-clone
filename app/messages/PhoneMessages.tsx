@@ -16,7 +16,7 @@ type Recipient = { user_id: string; phone_e164: string };
 function normalizePhone(value: string) {
   const normalized = value.trim().replace(/[^+\d]/g, "");
   if (!/^\+[1-9]\d{7,14}$/.test(normalized)) {
-    throw new Error("Enter the account phone number in international format, for example +27821234567.");
+    throw new Error("Enter the contact number in international format, for example +27821234567.");
   }
   return normalized;
 }
@@ -24,6 +24,7 @@ function normalizePhone(value: string) {
 export default function PhoneMessages() {
   const supabase = useMemo(() => createClient(), []);
   const [userId, setUserId] = useState("");
+  const [accountUsername, setAccountUsername] = useState("");
   const [accountPhone, setAccountPhone] = useState("");
   const [hasRegisteredPhone, setHasRegisteredPhone] = useState(false);
   const [lookupPhone, setLookupPhone] = useState("");
@@ -42,20 +43,19 @@ export default function PhoneMessages() {
     void (async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
       if (error) { if (active) setStatus(error.message); return; }
-      if (!user) { if (active) setStatus("Sign in with your email and password to use messaging."); return; }
+      if (!user) { if (active) setStatus("Sign in with your username and password to use messaging."); return; }
       if (!active) return;
       setUserId(user.id);
-      let registeredPhone = typeof user.user_metadata.phone_e164 === "string" ? user.user_metadata.phone_e164 : "";
-      if (!registeredPhone) {
-        const { data: profilePhone, error: profileError } = await supabase.rpc("get_my_simple_messaging_phone");
-        if (profileError) throw profileError;
-        if (typeof profilePhone === "string") registeredPhone = profilePhone;
-      }
+      const username = typeof user.user_metadata.username === "string" ? user.user_metadata.username : "";
+      setAccountUsername(username);
+      const { data: profilePhone, error: profileError } = await supabase.rpc("get_my_simple_messaging_phone");
+      if (profileError) throw profileError;
+      const registeredPhone = typeof profilePhone === "string" ? profilePhone : "";
       setAccountPhone(registeredPhone);
       setHasRegisteredPhone(Boolean(registeredPhone));
       setStatus(registeredPhone
-        ? "Enter the other person’s account phone number to start a chat."
-        : "This account has no phone number registered in Supabase.");
+        ? "Enter the other person’s registered contact number to start a chat."
+        : "This account has no contact number registered in Supabase.");
     })().catch((error: unknown) => {
       if (active) setStatus(error instanceof Error ? error.message : "Could not load your account.");
     });
@@ -93,12 +93,12 @@ export default function PhoneMessages() {
     setConversationId("");
     setMessages([]);
     try {
-      if (!userId || !hasRegisteredPhone) throw new Error("Sign in to an account with a phone number registered in Supabase.");
+      if (!userId || !hasRegisteredPhone) throw new Error("Sign in to an account with a contact number registered in Supabase.");
       const phone = normalizePhone(lookupPhone);
       const { data, error } = await supabase.rpc("find_simple_message_recipient", { phone_value: phone });
       if (error) throw error;
       const match = (data ?? [])[0] as Recipient | undefined;
-      if (!match) throw new Error("No other account with that phone number was found.");
+      if (!match) throw new Error("No other registered account with that contact number was found.");
       const conversation = await supabase.rpc("get_or_create_simple_conversation", { target_user_id: match.user_id });
       if (conversation.error) throw conversation.error;
       setRecipient(match);
@@ -138,15 +138,15 @@ export default function PhoneMessages() {
     <section style={{ padding: 18, border: "1px solid #ddd", borderRadius: 12 }}>
       <h2>Your account</h2>
       {userId
-        ? <p>Signed in as <strong>{accountPhone}</strong>{hasRegisteredPhone ? " — number registered." : " — no phone number registered."}</p>
-        : <p><Link href={loginPath}>Log in</Link> or <Link href="/signup">create an account</Link> with a phone number registered to the account.</p>}
+        ? <p>Signed in as <strong>{accountUsername ? `@${accountUsername}` : "account"}</strong>{hasRegisteredPhone ? ` — contact number ${accountPhone} is registered.` : " — no contact number is registered."}</p>
+        : <p><Link href={loginPath}>Log in</Link> or <Link href="/signup">create an account</Link> with a username and contact number.</p>}
     </section>
 
     <section style={{ padding: 18, border: "1px solid #ddd", borderRadius: 12 }}>
       <h2>Start a conversation</h2>
-      <p>Enter the phone number registered to the other Supabase account. It is an unverified identifier; no verification code is sent. Messages are stored as plain text in Supabase.</p>
+      <p>Enter the contact number registered to the other account. Phone numbers are used only to find contacts; no SMS login or verification code is sent. Messages are stored in Supabase.</p>
       <form onSubmit={findRecipient} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <input aria-label="Other person’s account phone" type="tel" autoComplete="tel" value={lookupPhone}
+        <input aria-label="Other person’s registered contact number" type="tel" autoComplete="tel" value={lookupPhone}
           onChange={(event) => setLookupPhone(event.target.value)} placeholder="+27821234567" required />
         <button disabled={busy || !hasRegisteredPhone}>Find account</button>
       </form>

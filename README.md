@@ -16,6 +16,16 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Supabase database migrations
+
+Install project dependencies with `npm install`, set `DATABASE_URL` in `.env.local` to the project's PostgreSQL connection URL from the Supabase dashboard, then apply pending migrations with:
+
+```bash
+npm run db:migrate
+```
+
+The migration script passes this URL directly to the Supabase CLI, so CLI login and project linking are not required. Keep the database URL private.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
