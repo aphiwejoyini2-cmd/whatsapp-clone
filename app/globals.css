@@ -602,4 +602,21 @@ button.privacy-setting-row:hover{background:#f3f7f1}
 .community-rail-button:hover,.community-rail-button.rail-button-active{color:#397b55}
 .messenger-shell.theme-dark .community-rail-button:hover,.messenger-shell.theme-dark .community-rail-button.rail-button-active{color:#a5d4ad}
 
-.messenger-shell.theme-dark .community-rail-image{filter:brightness(1.45) saturate(.9)}
+.messenger-shell.theme-dark .community-rail-image{filter:brightness(1.25) saturate(.7)}
+
+/* Status recent-updates controls use the dark palette with a restrained green accent. */
+.status-page.theme-dark .status-section-title>span{background:#26352a;color:#b5dbbb}
+.status-page.theme-dark .status-avatar{border-color:#35483a;background:#1b2820;color:#a5d4ad}
+.status-page.theme-dark .status-avatar-own{border-color:#53765b;background:#172119;color:#a5d4ad}
+.status-page.theme-dark .status-avatar-ring{border-color:#57966a;box-shadow:inset 0 0 0 3px #101010}
+.status-page.theme-dark .status-row-add{background:#24372a;color:#b5dbbb}
+.status-page.theme-dark .my-status-row:hover,.status-page.theme-dark .status-row:hover{background:#171d18}
+.status-viewer-has-image{overflow:hidden;isolation:isolate}
+.status-viewer-has-image::after{position:absolute;z-index:1;inset:0;border-radius:inherit;background:linear-gradient(180deg,#0009 0%,transparent 24%,transparent 62%,#000b 100%);content:"";pointer-events:none}
+.status-viewer-has-image .status-viewer-image{position:absolute;z-index:0;inset:0;width:100%;height:100%;max-width:none;min-height:0;max-height:none;margin:0;border-radius:inherit;object-fit:cover}
+.status-viewer-has-image .status-viewer-progress,.status-viewer-has-image>header,.status-viewer-has-image>p,.status-viewer-has-image .status-viewer-navigation,.status-viewer-has-image .status-viewer-actions{position:relative;z-index:2}
+.status-viewer-has-image .status-viewer-progress{flex:none}
+.status-viewer-has-image>header{flex:none}
+.status-viewer-has-image>p{flex:1;min-height:0;margin:12px 14px 18px;display:flex;align-items:flex-end;padding-bottom:8px;text-shadow:0 2px 8px #000b}
+.status-viewer-has-image .status-viewer-navigation{position:absolute;z-index:3}
+.status-viewer-has-image .status-viewer-actions{flex:none}
