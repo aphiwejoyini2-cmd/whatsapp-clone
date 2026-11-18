@@ -579,6 +579,12 @@ button.privacy-setting-row:hover{background:#f3f7f1}
 .messenger-shell.theme-dark .profile-picture-upload{border-color:#35483a;background:linear-gradient(145deg,#202a22,#151b17);box-shadow:0 4px 12px #0007,inset 0 1px 0 #ffffff0b;color:#a5d4ad}
 .messenger-shell.theme-dark .profile-picture-upload:hover{border-color:#46614b;background:linear-gradient(145deg,#27372b,#19231c);color:#b5dbbb}
 
+/* Community empty-state create button */
+.community-welcome .community-create-button{width:min(100%,360px);min-height:46px;height:auto;padding:0 20px;border:1px solid #dfe5de;border-radius:999px;background:#f8f9f6;color:#47534a;font-size:13px;font-weight:700;box-shadow:0 3px 10px #26332308,inset 0 1px 0 #ffffff;}
+.community-welcome .community-create-button:hover{border-color:#cbd4ca;background:#f0f3ee;box-shadow:0 5px 14px #26332310,inset 0 1px 0 #ffffff;}
+.messenger-shell.theme-dark .community-welcome .community-create-button{border-color:#353d37;background:linear-gradient(145deg,#202420,#181c19);color:#e2e8e2;box-shadow:0 4px 12px #0005,inset 0 1px 0 #ffffff09;}
+.messenger-shell.theme-dark .community-welcome .community-create-button:hover{border-color:#465149;background:linear-gradient(145deg,#282e29,#1d231f);box-shadow:0 6px 15px #0006,inset 0 1px 0 #ffffff0c;}
+
 /* Messaging phone number button: match the rounded search field container. */
 .settings-section .settings-card .messaging-phone-form.contact-form button[type="submit"]{width:100%;min-height:46px;margin-top:5px;padding:0 18px;border:1px solid #e5ebe4;border-radius:999px;background:#f8f9f6;color:#398b60;font-size:12px;font-weight:700;appearance:none;-webkit-appearance:none;box-shadow:0 3px 10px #26332308;cursor:pointer;}
 .settings-section .settings-card .messaging-phone-form.contact-form button[type="submit"]:hover{border-color:#cbd9cb;background:#f0f5ef;}
@@ -589,3 +595,11 @@ button.privacy-setting-row:hover{background:#f3f7f1}
 .settings-section .settings-card .messaging-phone-form.contact-form input[type="tel"]{background:#fbfcfa;color:#39473d;border:1px solid #e3e9e1;}
 .messenger-shell.theme-dark .settings-section .settings-card .messaging-phone-form.contact-form input[type="tel"]{background:#202d24;color:#e2ebe3;border-color:#35443a;color-scheme:dark;}
 .messenger-shell.theme-dark .settings-section .settings-card .messaging-phone-form.contact-form input[type="tel"]::placeholder{color:#8f9d91;}
+
+/* Theme-aware community navigation glyph */
+.community-rail-image{width:24px;height:24px;object-fit:contain;color:currentColor}
+.community-rail-button{color:#438a5a}
+.community-rail-button:hover,.community-rail-button.rail-button-active{color:#397b55}
+.messenger-shell.theme-dark .community-rail-button:hover,.messenger-shell.theme-dark .community-rail-button.rail-button-active{color:#a5d4ad}
+
+.messenger-shell.theme-dark .community-rail-image{filter:brightness(1.45) saturate(.9)}
