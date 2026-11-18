@@ -617,6 +617,48 @@ button.privacy-setting-row:hover{background:#f3f7f1}
 .status-viewer-has-image .status-viewer-progress,.status-viewer-has-image>header,.status-viewer-has-image>p,.status-viewer-has-image .status-viewer-navigation,.status-viewer-has-image .status-viewer-actions{position:relative;z-index:2}
 .status-viewer-has-image .status-viewer-progress{flex:none}
 .status-viewer-has-image>header{flex:none}
-.status-viewer-has-image>p{flex:1;min-height:0;margin:12px 14px 18px;display:flex;align-items:flex-end;padding-bottom:8px;text-shadow:0 2px 8px #000b}
+.status-viewer-has-image>p{position:absolute;right:24px;bottom:26px;left:24px;z-index:2;min-height:0;margin:0;padding:12px 10px;display:block;color:#fff;text-align:center;font:650 clamp(20px,5vw,26px)/1.35 var(--font-display);letter-spacing:-.025em;text-wrap:pretty;overflow-wrap:anywhere;text-shadow:0 2px 10px #000c}
 .status-viewer-has-image .status-viewer-navigation{position:absolute;z-index:3}
 .status-viewer-has-image .status-viewer-actions{flex:none}
+.status-viewer-dismiss{position:absolute;top:34px;right:16px;z-index:4;width:34px;height:34px;padding:0;display:grid;place-items:center;border:1px solid #ffffff50;border-radius:50%;background:#10171280;color:#fff;font:400 23px/1 var(--font-body);cursor:pointer;backdrop-filter:blur(8px)}
+.status-viewer-dismiss:hover{background:#101712c9}
+.status-viewer-has-image .status-viewer-dismiss{position:absolute}
+.status-list-modal{width:min(100%,440px);max-height:min(78dvh,620px);overflow:hidden;padding:22px;border:1px solid #e6ece4;border-radius:20px;background:#fff;box-shadow:0 25px 80px #10201640;color:#29362f}
+.status-list-modal>header{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:1px solid #edf0eb}
+.status-list-modal>header h2{margin:5px 0 0;font:750 20px var(--font-display)}
+.status-list-modal>header button{width:32px;height:32px;border:0;border-radius:50%;background:#f0f3ef;color:#68746a;font-size:21px;cursor:pointer}
+.status-list-items{max-height:calc(min(78dvh,620px) - 90px);overflow-y:auto;padding-top:8px}
+.status-list-item{width:100%;min-height:68px;padding:8px 5px;display:flex;align-items:center;gap:11px;border:0;border-bottom:1px solid #edf0eb;background:transparent;color:#344239;text-align:left;cursor:pointer}
+.status-list-item:hover{background:#f7f9f6}
+.status-list-item>img,.status-list-item>video,.status-list-text-preview{width:46px;height:46px;flex:none;display:grid;place-items:center;overflow:hidden;border:1px solid #e3e9e2;border-radius:11px;background:#eaf2e8;color:#47835b;font-size:10px;object-fit:cover}
+.status-list-text-preview{padding:4px;text-align:center;line-height:1.2}
+.status-list-item-copy{min-width:0;display:flex;flex:1;flex-direction:column;gap:5px}
+.status-list-item-copy strong{overflow:hidden;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.status-list-item-copy small{color:#8a958c;font-size:9px}
+.status-list-item-chevron{color:#94a098;font-size:22px}
+.status-page.theme-dark .status-list-modal{border-color:#303630;background:#111512;color:#e2ebe3}
+.status-page.theme-dark .status-list-modal>header{border-color:#303630}
+.status-page.theme-dark .status-list-modal>header button{background:#202820;color:#c5d0c6}
+.status-page.theme-dark .status-list-item{border-color:#303630;color:#e2ebe3}
+.status-page.theme-dark .status-list-item:hover{background:#1a211b}
+.status-page.theme-dark .status-list-item>img,.status-page.theme-dark .status-list-item>video,.status-page.theme-dark .status-list-text-preview{border-color:#35443a;background:#1b2820;color:#a5d4ad}
+.status-page.theme-dark .status-list-item-copy small{color:#a2afa4}
+.status-page.theme-dark .status-list-item-chevron{color:#9eada0}
+.status-list-item-wrap{position:relative;display:flex;align-items:center;border-bottom:1px solid #edf0eb}
+.status-list-item-wrap .status-list-item{flex:1;min-width:0;border-bottom:0}
+.status-list-menu-trigger{width:42px;height:42px;flex:none;display:flex;align-items:center;justify-content:center;gap:3px;border:0;border-radius:50%;background:transparent;cursor:pointer}
+.status-list-menu-trigger:hover,.status-list-menu-trigger[aria-expanded="true"]{background:#f0f3ef}
+.status-list-menu-trigger span{width:4px;height:4px;border-radius:50%;background:#68746a}
+.status-list-action-menu{position:absolute;z-index:5;top:calc(100% - 5px);right:4px;width:145px;padding:6px;border:1px solid #e4e9e2;border-radius:12px;background:#fff;box-shadow:0 10px 28px #10201624}
+.status-list-action-menu button{width:100%;min-height:37px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:#39473d;text-align:left;font-size:11px;cursor:pointer}
+.status-list-action-menu button:hover{background:#f1f5ef}
+.status-list-action-menu button:first-child{color:#b34242}
+.status-list-message{margin:10px 0 0;color:#47835b;font-size:10px}
+.status-page.theme-dark .status-list-item-wrap{border-color:#303630}
+.status-page.theme-dark .status-list-menu-trigger:hover,.status-page.theme-dark .status-list-menu-trigger[aria-expanded="true"]{background:#202820}
+.status-page.theme-dark .status-list-menu-trigger span{background:#c4cec5}
+.status-page.theme-dark .status-list-action-menu{border-color:#354238;background:#171d18;box-shadow:0 10px 28px #0008}
+.status-page.theme-dark .status-list-action-menu button{color:#e2ebe3}
+.status-page.theme-dark .status-list-action-menu button:hover{background:#243128}
+.status-page.theme-dark .status-list-action-menu button:first-child{color:#ef8b8b}
+.status-page.theme-dark .status-list-message{color:#a5d4ad}
