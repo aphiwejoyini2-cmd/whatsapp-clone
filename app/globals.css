@@ -403,12 +403,13 @@
 .dashboard-content.theme-dark .message-info-details strong,.dashboard-content.theme-light .message-info-details strong{color:#f2f2f2}
 
 /* Keep the action popup aligned to the selected message bubble width. */
-.message-action-menu{box-sizing:border-box;width:100%;min-width:150px;max-width:100%;padding:5px 0;border-radius:17px}
-.message-action-menu>button{min-height:46px;padding:0 12px;font-size:13px;gap:8px}
-.message-action-menu>button svg{width:19px;height:19px}
-.message-action-menu>button:last-child{margin-top:5px}
-.message-action-menu-title{min-height:40px;padding:0 10px}
-.message-info-details{padding:9px 12px}
+.message-action-menu{box-sizing:border-box;left:0;right:auto;width:min(180px,calc(100vw - 32px));min-width:min(150px,calc(100vw - 32px));max-width:calc(100vw - 32px);padding:3px 0;border-radius:14px}
+.message-row-me .message-action-menu{left:auto;right:0}
+.message-action-menu>button{min-height:34px;padding:0 9px;font-size:11px;gap:6px}
+.message-action-menu>button svg{width:15px;height:15px}
+.message-action-menu>button:last-child{margin-top:4px}
+.message-action-menu-title{min-height:30px;padding:0 8px}
+.message-info-details{padding:7px 9px}
 
 /* Message menu placement and project palette button treatment. */
 .message-row:last-child .message-action-menu{top:calc(100% + 10px);bottom:auto}
