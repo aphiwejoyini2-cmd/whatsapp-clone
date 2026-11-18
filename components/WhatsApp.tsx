@@ -790,7 +790,7 @@ export default function WhatsApp() {
         </header>
         <div className="settings-card">
           <div className="settings-card-heading"><div><h2>Messaging phone number</h2><p>Register the number other signed-up accounts will use to find you.</p></div></div>
-          <form onSubmit={saveMessagingPhone} className="contact-form"><label>Phone number<input type="tel" autoComplete="tel" value={accountPhone} onChange={(event) => setAccountPhone(event.target.value)} placeholder="+27821234567" required /></label><button type="submit">Save number</button></form>
+          <form onSubmit={saveMessagingPhone} className="contact-form messaging-phone-form"><label>Phone number<input type="tel" autoComplete="tel" value={accountPhone} onChange={(event) => setAccountPhone(event.target.value)} placeholder="+27821234567" required /></label><button type="submit">Save number</button></form>
           {phoneSaveStatus && <p role="status">{phoneSaveStatus}</p>}
         </div>
         <div className="settings-card">

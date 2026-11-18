@@ -578,3 +578,14 @@ button.privacy-setting-row:hover{background:#f3f7f1}
 .messenger-shell.theme-dark .profile-picture-preview{border-color:#344238;background:linear-gradient(145deg,#202a22,#151b17);color:#a5d4ad}
 .messenger-shell.theme-dark .profile-picture-upload{border-color:#35483a;background:linear-gradient(145deg,#202a22,#151b17);box-shadow:0 4px 12px #0007,inset 0 1px 0 #ffffff0b;color:#a5d4ad}
 .messenger-shell.theme-dark .profile-picture-upload:hover{border-color:#46614b;background:linear-gradient(145deg,#27372b,#19231c);color:#b5dbbb}
+
+/* Messaging phone number button: match the rounded search field container. */
+.settings-section .settings-card .messaging-phone-form.contact-form button[type="submit"]{width:100%;min-height:46px;margin-top:5px;padding:0 18px;border:1px solid #e5ebe4;border-radius:999px;background:#f8f9f6;color:#398b60;font-size:12px;font-weight:700;appearance:none;-webkit-appearance:none;box-shadow:0 3px 10px #26332308;cursor:pointer;}
+.settings-section .settings-card .messaging-phone-form.contact-form button[type="submit"]:hover{border-color:#cbd9cb;background:#f0f5ef;}
+.messenger-shell.theme-dark .settings-section .settings-card .messaging-phone-form.contact-form button[type="submit"]{border-color:#35443a;background:#202d24;color:#a5d4ad;box-shadow:0 4px 12px #0003,inset 0 1px 0 #ffffff08;}
+.messenger-shell.theme-dark .settings-section .settings-card .messaging-phone-form.contact-form button[type="submit"]:hover{border-color:#46614b;background:#29382d;}
+
+/* Match the phone number input to the selected appearance theme. */
+.settings-section .settings-card .messaging-phone-form.contact-form input[type="tel"]{background:#fbfcfa;color:#39473d;border:1px solid #e3e9e1;}
+.messenger-shell.theme-dark .settings-section .settings-card .messaging-phone-form.contact-form input[type="tel"]{background:#202d24;color:#e2ebe3;border-color:#35443a;color-scheme:dark;}
+.messenger-shell.theme-dark .settings-section .settings-card .messaging-phone-form.contact-form input[type="tel"]::placeholder{color:#8f9d91;}
