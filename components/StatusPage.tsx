@@ -50,7 +50,7 @@ function readStatuses(): Status[] {
   }
 }
 
-export default function StatusPage({ embedded = false }: { embedded?: boolean }) {
+export default function StatusPage({ embedded = false, hidden = false }: { embedded?: boolean; hidden?: boolean }) {
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [contactStatuses, setContactStatuses] = useState<Status[]>([]);
   const [viewingStatuses, setViewingStatuses] = useState<Status[]>([]);
@@ -246,6 +246,11 @@ export default function StatusPage({ embedded = false }: { embedded?: boolean })
     });
   }
 
+  function viewOwnStatuses() {
+    if (!statuses.length) { setIsComposerOpen(true); return; }
+    viewStatus(statuses[0]);
+  }
+
   function openStatuses() {
     if (!statuses.length) {
       setIsComposerOpen(true);
@@ -346,7 +351,7 @@ export default function StatusPage({ embedded = false }: { embedded?: boolean })
   }
 
   const StatusContainer = embedded ? "section" : "main";
-  return <StatusContainer className={`status-page ${embedded ? "status-page-embedded" : ""} ${isDarkMode ? "theme-dark" : ""}`}>
+  return <StatusContainer hidden={hidden} className={`status-page ${embedded ? "status-page-embedded" : ""} ${isDarkMode ? "theme-dark" : ""}`}>
     {!embedded && (<aside className="status-nav" aria-label="Main navigation"><a className="status-brand-mark" href="/chat" aria-label="Home"><Image src="/lingo-logo.jpg" alt="" width={42} height={42} priority /></a><a className="status-nav-link" href="/chat" aria-label="Chats" title="Chats"><NavigationIcon name="chats"/></a><a className="status-nav-link" href="/chat?section=language" aria-label="Language exchange" title="Language exchange"><NavigationIcon name="language"/></a><a className="status-nav-link status-nav-link-active" href="/status" aria-label="Status" title="Status"><NavigationIcon name="status"/></a><a className="status-nav-link" href="/chat?section=community" aria-label="Community" title="Community"><Image className="community-rail-image" src="/community-icon.svg" alt="" width={28} height={28}/></a><a className="status-nav-link" href="/chat?section=call-log" aria-label="Call log" title="Call log"><NavigationIcon name="call-log"/></a><span className="status-nav-spacer"/><a className="status-nav-link" href="/chat?section=settings" aria-label="Settings" title="Settings"><NavigationIcon name="settings"/></a><span className="status-nav-profile">Y</span></aside>)}
 
     <section className="status-layout">
@@ -358,7 +363,7 @@ export default function StatusPage({ embedded = false }: { embedded?: boolean })
           {statusListMessage && !isStatusListOpen && <p className="status-list-message" role="status">{statusListMessage}</p>}
           {contactStatuses.map((status) => <button className="status-row" key={status.id} onClick={() => viewStatus(status)}><span className="status-avatar status-avatar-ring">•</span><span className="status-row-copy"><strong>{status.text || (status.mediaType?.startsWith("video/") ? "Contact video status" : "Contact photo status")}</strong><small>{new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(status.createdAt))}</small></span><span className="status-row-chevron">›</span></button>)}
           <div className="status-divider" />
-          {statuses.length ? <button className="status-row" onClick={openStatuses}><span className="status-avatar status-avatar-ring">Y</span><span className="status-row-copy"><strong>Your updates</strong><small>Tap to view your status updates</small></span><span className="status-row-chevron">›</span></button> : <div className="status-empty-list"><span>✳</span><strong>No recent updates</strong><small>When your contacts share a status, it will appear here.</small></div>}
+          {statuses.length ? <button className="status-row" onClick={viewOwnStatuses}><span className="status-avatar status-avatar-ring">Y</span><span className="status-row-copy"><strong>Your updates</strong><small>Tap to view your status updates</small></span><span className="status-row-chevron">›</span></button> : <div className="status-empty-list"><span>✳</span><strong>No recent updates</strong><small>When your contacts share a status, it will appear here.</small></div>}
           <div className="status-privacy-note"><span>⌑</span><p>Status updates disappear after <strong>24 hours</strong> in WhatsApp. This prototype keeps updates in this browser.</p></div>
         </section>
         <section className="status-preview-panel status-add-panel" aria-label="Add a status">
