@@ -663,3 +663,117 @@ button.privacy-setting-row:hover{background:#f3f7f1}
 .status-page.theme-dark .status-list-action-menu button:hover{background:#243128}
 .status-page.theme-dark .status-list-action-menu button:first-child{color:#ef8b8b}
 .status-page.theme-dark .status-list-message{color:#a5d4ad}
+.profile-page-heading h1{margin:0;text-align:center;font-size:30px}
+.profile-hero-card{width:100%;margin-top:35px;padding:34px 20px 20px;border:0;background:transparent;box-shadow:none}
+.profile-hero-card .profile-picture-controls{padding:0;display:flex;flex-direction:column;gap:14px}
+.profile-hero-card .profile-picture-preview{width:160px;height:160px;border:0;background:#dcecdf;color:#398b60;font-size:48px}
+.profile-hero-card .profile-picture-upload{position:absolute;width:160px;height:160px;border:0;border-radius:50%;background:transparent;box-shadow:none;opacity:0}
+.profile-hero-card .profile-edit-photo{border:0;background:transparent;color:#398b60;font-size:17px;font-weight:650;cursor:pointer}
+.profile-info-card{width:100%;margin-top:35px;padding:0 22px;border:0;border-radius:18px;background:#fff}
+.profile-info-row{width:100%;min-height:72px;padding:0 4px;display:flex;align-items:center;justify-content:space-between;gap:18px;border:0;border-bottom:1px solid #e6ebe5;background:transparent;color:#27332b;text-align:left;font:inherit;font-size:16px}
+.profile-info-row:last-child{border-bottom:0}
+button.profile-info-row{cursor:pointer}
+.profile-info-row>span:last-child{max-width:68%;overflow:hidden;color:#768078;text-align:right;text-overflow:ellipsis;white-space:nowrap}
+.profile-info-row b{padding-left:10px;color:#aeb8b0;font-size:24px;font-weight:400;vertical-align:-2px}
+.profile-info-row .profile-green-value{color:#398b60}
+.dashboard-content.theme-dark .profile-info-card{background:#111;border-color:#2d2d2d}
+.dashboard-content.theme-dark .profile-info-row{color:#ededed;border-color:#303030}
+.dashboard-content.theme-dark .profile-info-row>span:last-child{color:#aaa}
+.dashboard-content.theme-dark .profile-info-row .profile-green-value{color:#a5d4ad}
+.dashboard-content.theme-dark .profile-hero-card{background:transparent;border-color:transparent}
+.dashboard-content.theme-dark .profile-hero-card .profile-edit-photo{color:#a5d4ad}
+.messenger-shell.theme-dark .profile-hero-card .profile-picture-preview{background:#294131;color:#b5dbbb}
+@media(max-width:620px){.settings-section{padding:20px 18px 28px}.profile-hero-card{margin-top:32px;padding:30px 10px 18px}.profile-hero-card .profile-picture-preview{width:150px;height:150px}.profile-hero-card .profile-picture-upload{width:150px;height:150px}.profile-info-card{margin-top:32px;padding:0 16px}.profile-info-row{min-height:72px;font-size:15px}.profile-info-row>span:last-child{max-width:70%}}
+/* Refine the Profile and messaging number typography. */
+.profile-page-heading h1{font-size:25px}
+.profile-info-row{font-size:14px}
+.profile-info-row>span:last-child{font-size:13px}
+.profile-info-row b{font-size:20px}
+.messaging-phone-card .settings-card-heading h2{font-size:13px}
+.messaging-phone-card .settings-card-heading p{font-size:9px}
+.messaging-phone-form label{font-size:10px}
+.messaging-phone-form input{font-size:12px}
+.messaging-phone-form button{font-size:11px}
+@media(max-width:620px){.profile-page-heading h1{font-size:24px}.profile-info-row{font-size:13px}.profile-info-row>span:last-child{font-size:12px}}
+
+.profile-edit-modal{padding:0}.profile-edit-modal .contact-form{padding:20px 22px}.profile-edit-modal small,.profile-edit-message{color:#7b8780;font-size:11px}.dashboard-content.theme-dark .profile-edit-modal{background:#111;border-color:#303030}.dashboard-content.theme-dark .profile-edit-modal .contact-modal-heading{background:#111;border-color:#303030}.dashboard-content.theme-dark .profile-edit-modal .contact-modal-heading h2{color:#eee}
+/* Make Profile actions match the Messaging phone number save button. */
+.profile-info-card{padding:10px 16px;border:0;background:transparent}
+.profile-info-row{min-height:48px;margin:8px 0;padding:0 17px;border:1px solid #e5ebe4;border-radius:999px;background:#f8f9f6;color:#398b60;font-size:12px;font-weight:700;box-shadow:0 3px 10px #26332308;cursor:pointer}
+.profile-info-row:last-child{border-bottom:1px solid #e5ebe4}
+.profile-info-row>span:last-child{color:#398b60;font-size:11px}
+.profile-info-row .profile-green-value{color:#398b60}
+.profile-info-row b{color:#82a98b;font-size:19px}
+button.profile-info-row:hover{border-color:#cbd9cb;background:#f0f5ef}
+.profile-phone-row{cursor:default}
+.messenger-shell.theme-dark .profile-info-row{border-color:#35443a;background:#202d24;color:#a5d4ad;box-shadow:0 4px 12px #0003,inset 0 1px 0 #ffffff08}
+.messenger-shell.theme-dark .profile-info-row>span:last-child,.messenger-shell.theme-dark .profile-info-row .profile-green-value{color:#a5d4ad}
+.messenger-shell.theme-dark .profile-info-row b{color:#809d84}
+.messenger-shell.theme-dark button.profile-info-row:hover{border-color:#46614b;background:#29382d}
+@media(max-width:620px){.profile-info-card{padding:8px}.profile-info-row{min-height:46px;padding:0 14px;font-size:11px}.profile-info-row>span:last-child{font-size:10px}}
+/* Darken Profile pills only in dark theme; light theme retains its green accent. */
+.messenger-shell.theme-dark .profile-info-row{border-color:#292929;background:#111;color:#e5e5e5;box-shadow:0 4px 12px #0005,inset 0 1px 0 #ffffff08}
+.messenger-shell.theme-dark .profile-info-row>span:last-child,.messenger-shell.theme-dark .profile-info-row .profile-green-value{color:#d0d0d0}
+.messenger-shell.theme-dark .profile-info-row b{color:#8a8a8a}
+.messenger-shell.theme-dark button.profile-info-row:hover{border-color:#3a3a3a;background:#181818}
+/* Darken the Messaging phone number card and its fields only in dark mode. */
+.messenger-shell.theme-dark .messaging-phone-card{border-color:#292929;background:#111}
+.messenger-shell.theme-dark .messaging-phone-card .settings-card-heading{border-color:#292929}
+.messenger-shell.theme-dark .messaging-phone-card .settings-card-heading h2{color:#ededed}
+.messenger-shell.theme-dark .messaging-phone-card .settings-card-heading p{color:#a2a2a2}
+.messenger-shell.theme-dark .messaging-phone-card .messaging-phone-form.contact-form input[type="tel"]{border-color:#292929;background:#181818;color:#e5e5e5}
+.messenger-shell.theme-dark .messaging-phone-card .messaging-phone-form.contact-form label{color:#b8b8b8}
+.messenger-shell.theme-dark .messaging-phone-card .messaging-phone-form.contact-form button[type="submit"]{border-color:#292929;background:#181818;color:#e5e5e5}
+.messenger-shell.theme-dark .messaging-phone-card .messaging-phone-form.contact-form button[type="submit"]:hover{border-color:#3a3a3a;background:#202020}
+/* Match the dark Profile pills on the messaging-number card in dark mode. */
+.messenger-shell.theme-dark .settings-section .settings-card.messaging-phone-card{border-color:#242424;background:#0d0d0d}
+.messenger-shell.theme-dark .settings-section .settings-card.messaging-phone-card .settings-card-heading{border-color:#292929}
+.messenger-shell.theme-dark .settings-section .settings-card.messaging-phone-card .messaging-phone-form.contact-form input[type="tel"]{border-color:#292929;background:#111;color:#e5e5e5}
+.messenger-shell.theme-dark .settings-section .settings-card.messaging-phone-card .messaging-phone-form.contact-form button[type="submit"]{border-color:#242424;background:#0d0d0d;color:#e5e5e5}
+.messenger-shell.theme-dark .settings-section .settings-card.messaging-phone-card .messaging-phone-form.contact-form button[type="submit"]:hover{border-color:#393939;background:#171717}
+/* Charcoal Privacy card surfaces in dark mode, without touching light mode. */
+.messenger-shell.theme-dark .settings-section .settings-card.privacy-settings-card{border-color:#242424;background:#0d0d0d}
+.messenger-shell.theme-dark .privacy-settings-card .settings-card-heading{border-color:#292929}
+.messenger-shell.theme-dark .privacy-settings-card .privacy-settings-list{border-color:#292929;background:#111}
+.messenger-shell.theme-dark .privacy-settings-card .privacy-setting-row{border-color:#292929;background:#111;color:#dedede}
+.messenger-shell.theme-dark .privacy-settings-card button.privacy-setting-row:hover{background:#181818}
+.messenger-shell.theme-dark .privacy-settings-card .privacy-switch-row{border-color:#292929;background:#111}
+.messenger-shell.theme-dark .privacy-settings-card .privacy-switch-row:hover{background:#181818}
+.messenger-shell.theme-dark .privacy-settings-card .privacy-setting-value{color:#aaa}
+.messenger-shell.theme-dark .privacy-settings-card .privacy-setting-value b{color:#888}
+.messenger-shell.theme-dark .privacy-settings-card .privacy-help-text{color:#999}
+.messenger-shell.theme-dark .privacy-settings-card .setting-toggle-row{border-color:#292929}
+.messenger-shell.theme-dark .privacy-settings-card .setting-toggle-row strong{color:#dedede}
+.messenger-shell.theme-dark .privacy-settings-card .setting-toggle-row small{color:#999}
+/* Privacy choice buttons keep the light rounded pill appearance in both themes. */
+.privacy-settings-card .privacy-settings-list{display:flex;flex-direction:column;gap:8px;overflow:visible;border:0;border-radius:0;background:transparent}
+.privacy-settings-card .privacy-setting-row{min-height:48px;padding:0 16px;border:1px solid #e5ebe4;border-radius:999px;background:#f8f9f6;color:#398b60;font-size:12px;font-weight:650;box-shadow:0 3px 10px #26332308}
+.privacy-settings-card button.privacy-setting-row:hover{border-color:#cbd9cb;background:#f0f5ef}
+.privacy-settings-card .privacy-setting-value{color:#6e7c70}
+.privacy-settings-card .privacy-setting-value b{color:#98a99a}
+.privacy-settings-card .privacy-secondary-list{gap:8px}
+.messenger-shell.theme-dark .privacy-settings-card .privacy-setting-row{border-color:#e5ebe4;background:#f8f9f6;color:#398b60}
+.messenger-shell.theme-dark .privacy-settings-card .privacy-setting-value{color:#6e7c70}
+.messenger-shell.theme-dark .privacy-settings-card .privacy-setting-value b{color:#98a99a}
+.messenger-shell.theme-dark .privacy-settings-card button.privacy-setting-row:hover{border-color:#cbd9cb;background:#f0f5ef}
+@media(max-width:620px){.privacy-settings-card .privacy-setting-row{min-height:46px;padding:0 13px;font-size:11px}}
+/* Privacy option pills follow the selected theme. */
+.messenger-shell.theme-dark .privacy-settings-card .privacy-setting-row{border-color:#292929;background:#111;color:#dedede;box-shadow:0 4px 12px #0005,inset 0 1px 0 #ffffff08}
+.messenger-shell.theme-dark .privacy-settings-card .privacy-setting-value{color:#aaa}
+.messenger-shell.theme-dark .privacy-settings-card .privacy-setting-value b{color:#888}
+.messenger-shell.theme-dark .privacy-settings-card button.privacy-setting-row:hover{border-color:#3a3a3a;background:#181818}
+.profile-crop-backdrop{z-index:70}
+.profile-crop-dialog{width:min(100%,390px);padding:18px;border:1px solid #e3e9e1;border-radius:18px;background:#fff;box-shadow:0 20px 60px #0004;color:#344138}
+.profile-crop-dialog>header{display:flex;align-items:center;justify-content:space-between}
+.profile-crop-dialog h2{margin:0;font-size:17px}
+.profile-crop-dialog>header button{width:32px;height:32px;border:0;border-radius:50%;background:#f1f5ef;font-size:22px;cursor:pointer}
+.profile-crop-dialog>p{margin:7px 0 15px;color:#7b8780;font-size:11px}
+.profile-crop-window{width:240px;height:240px;margin:0 auto 18px;overflow:hidden;border-radius:50%;background:#e6ece6}
+.profile-crop-window img{display:block;max-width:none}
+.profile-crop-dialog>label{margin:12px 0;display:flex;flex-direction:column;gap:7px;color:#536056;font-size:11px;font-weight:650}
+.profile-crop-dialog input[type=range]{width:100%;accent-color:#398b60}
+.profile-crop-dialog>footer{margin-top:17px;display:flex;justify-content:flex-end;gap:9px}
+.messenger-shell.theme-dark .profile-crop-dialog{border-color:#303030;background:#111;color:#ededed}
+.messenger-shell.theme-dark .profile-crop-dialog>p,.messenger-shell.theme-dark .profile-crop-dialog>label{color:#aaa}
+.messenger-shell.theme-dark .profile-crop-dialog>header button{background:#202020;color:#eee}
+@media(max-width:620px){.profile-crop-window{width:210px;height:210px}}

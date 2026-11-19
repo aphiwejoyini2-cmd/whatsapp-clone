@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import NavigationIcon from "@/components/NavigationIcon";
+import { isValidUsername, normalizeUsername } from "@/lib/auth/username";
 import { EMOJI_CATEGORIES, type EmojiCategory } from "@/lib/emojis";
 import { createClient } from "@/lib/supabase/client";
 import CallWindow from "@/components/calls/CallWindow";
@@ -122,6 +123,13 @@ export default function WhatsApp() {
   const supabase = useMemo(() => createClient(), []);
   const [currentUserId, setCurrentUserId] = useState("");
   const [accountPhone, setAccountPhone] = useState("");
+  const [profileName, setProfileName] = useState("");
+  const [profileUsername, setProfileUsername] = useState("");
+  const [profileAbout, setProfileAbout] = useState("");
+  const [profileEdit, setProfileEdit] = useState<"name" | "username" | "about" | null>(null);
+  const [profileDraft, setProfileDraft] = useState("");
+  const [profileSaveMessage, setProfileSaveMessage] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
   const [phoneSaveStatus, setPhoneSaveStatus] = useState("");
   const [dbConversationId, setDbConversationId] = useState("");
   const [dbStatus, setDbStatus] = useState("");
@@ -134,6 +142,11 @@ export default function WhatsApp() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [profileMessage, setProfileMessage] = useState("");
   const [profileUploading, setProfileUploading] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [cropPreview, setCropPreview] = useState("");
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropX, setCropX] = useState(50);
+  const [cropY, setCropY] = useState(50);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -161,7 +174,7 @@ export default function WhatsApp() {
   const [practiceLanguage, setPracticeLanguage] = useState("es");
   const [practiceMeaning, setPracticeMeaning] = useState("");
   const [practiceLookupBusy, setPracticeLookupBusy] = useState(false);
-  const [activeSection, setActiveSection] = useState<"chats" | "language" | "community" | "call-log" | "status" | "settings">("chats");
+  const [activeSection, setActiveSection] = useState<"chats" | "language" | "community" | "call-log" | "status" | "settings">("settings");
   const [mobileOpenChat, setMobileOpenChat] = useState(false);
   const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "pinned" | "archived">("all");
   const [openMenuChatId, setOpenMenuChatId] = useState<string | null>(null);
@@ -293,8 +306,8 @@ export default function WhatsApp() {
   const selectedChat = chats.find((chat) => chat.id === selectedChatId);
   useEffect(() => {
     let alive = true;
-    void supabase.auth.getUser().then(({ data, error }) => { if (!alive) return; if (error) setDbStatus(error.message); setCurrentUserId(data.user?.id ?? ""); setAccountPhone(String(data.user?.user_metadata.phone_e164 ?? "")); });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => { setCurrentUserId(session?.user.id ?? ""); setAccountPhone(String(session?.user.user_metadata.phone_e164 ?? "")); });
+    void supabase.auth.getUser().then(({ data, error }) => { if (!alive) return; if (error) setDbStatus(error.message); setCurrentUserId(data.user?.id ?? ""); setAccountPhone(String(data.user?.user_metadata.phone_e164 ?? "")); setProfileName(String(data.user?.user_metadata.display_name ?? "")); setProfileUsername(String(data.user?.user_metadata.username ?? "")); setProfileAbout(String(data.user?.user_metadata.about ?? "")); });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => { setCurrentUserId(session?.user.id ?? ""); setAccountPhone(String(session?.user.user_metadata.phone_e164 ?? "")); setProfileName(String(session?.user.user_metadata.display_name ?? "")); setProfileUsername(String(session?.user.user_metadata.username ?? "")); setProfileAbout(String(session?.user.user_metadata.about ?? "")); });
     return () => { alive = false; listener.subscription.unsubscribe(); };
   }, [supabase]);
   useEffect(() => {
@@ -668,6 +681,36 @@ export default function WhatsApp() {
     });
   }, []);
 
+  function openProfileEdit(field: "name" | "username" | "about") {
+    setProfileEdit(field);
+    setProfileDraft(field === "name" ? profileName : field === "username" ? profileUsername : profileAbout);
+    setProfileSaveMessage("");
+  }
+
+  async function saveProfileField(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!profileEdit) return;
+    const value = profileDraft.trim();
+    if (profileEdit === "name" && (!value || value.length > 60)) { setProfileSaveMessage("Enter a name up to 60 characters."); return; }
+    if (profileEdit === "about" && value.length > 139) { setProfileSaveMessage("About must be 139 characters or fewer."); return; }
+    if (profileEdit === "username" && !isValidUsername(normalizeUsername(value))) { setProfileSaveMessage("Use 3–30 letters, numbers, dots, or underscores; start and end with a letter or number."); return; }
+    setProfileSaving(true);
+    let errorMessage = "";
+    if (profileEdit === "username") {
+      const response = await fetch("/api/profile/username", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: value }) });
+      const result = await response.json();
+      if (!response.ok) errorMessage = result.error || "Could not update username.";
+      else setProfileUsername(result.username);
+    } else {
+      const key = profileEdit === "name" ? "display_name" : "about";
+      const { error } = await supabase.auth.updateUser({ data: { [key]: value } });
+      if (error) errorMessage = error.message;
+      else if (profileEdit === "name") setProfileName(value); else setProfileAbout(value);
+    }
+    setProfileSaveMessage(errorMessage || "Profile updated.");
+    setProfileSaving(false);
+    if (!errorMessage) setProfileEdit(null);
+  }
   async function saveMessagingPhone(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!currentUserId) { router.push(`/login?next=${encodeURIComponent("/")}`); return; }
@@ -677,6 +720,41 @@ export default function WhatsApp() {
     setPhoneSaveStatus(error ? error.message : "Number registered. You can now be found by other accounts.");
   }
 
+  function chooseProfilePicture(file?: File) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setProfileMessage("Choose an image file."); return; }
+    if (file.size > 5 * 1024 * 1024) { setProfileMessage("Choose an image smaller than 5 MB."); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setCropFile(file); setCropPreview(reader.result); setCropZoom(1); setCropX(50); setCropY(50); setProfileMessage("");
+      }
+    };
+    reader.onerror = () => setProfileMessage("Could not read that image. Please try another file.");
+    reader.readAsDataURL(file);
+  }
+
+  async function uploadCroppedProfilePicture() {
+    if (!cropFile || !cropPreview) return;
+    const image = new window.Image();
+    image.src = cropPreview;
+    await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error("Could not open this image.")); });
+    const size = 512;
+    const scale = Math.max(size / image.naturalWidth, size / image.naturalHeight) * cropZoom;
+    const width = image.naturalWidth * scale;
+    const height = image.naturalHeight * scale;
+    const overflowX = Math.max(0, width - size);
+    const overflowY = Math.max(0, height - size);
+    const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size;
+    const context = canvas.getContext("2d");
+    if (!context) { setProfileMessage("Could not prepare the cropped image."); return; }
+    context.drawImage(image, -(overflowX * cropX / 100), -(overflowY * cropY / 100), width, height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+    if (!blob) { setProfileMessage("Could not prepare the cropped image."); return; }
+    const cropped = new File([blob], `${cropFile.name.replace(/\\.[^.]+$/, "")}-profile.jpg`, { type: "image/jpeg" });
+    setCropFile(null); setCropPreview("");
+    await uploadProfilePicture(cropped);
+  }
   async function uploadProfilePicture(file?: File) {
     if (!file) return;
     setProfileMessage("");
@@ -717,7 +795,7 @@ export default function WhatsApp() {
         <div className="rail-profile" aria-label="Your profile">{profileImage ? <img src={profileImage} alt=""/> : "Y"}</div>
       </aside>
 
-      <div className={`dashboard-content ${settings.theme === "dark" ? "theme-dark" : ""} ${settings.compactChats ? "compact-chats" : ""}`}>
+        {profileEdit && <div className="modal-backdrop" onClick={() => !profileSaving && setProfileEdit(null)}><section className="contact-modal profile-edit-modal" role="dialog" aria-modal="true" aria-labelledby="profile-edit-title" onClick={(event) => event.stopPropagation()}><header className="contact-modal-heading"><h2 id="profile-edit-title">Edit {profileEdit === "name" ? "name" : profileEdit}</h2><button type="button" className="cancel-button" onClick={() => setProfileEdit(null)} disabled={profileSaving}>Cancel</button></header><form className="contact-form" onSubmit={saveProfileField}><label>{profileEdit === "name" ? "Name" : profileEdit === "username" ? "Username" : "About"}<input autoFocus value={profileDraft} onChange={(event) => setProfileDraft(event.target.value)} maxLength={profileEdit === "about" ? 139 : profileEdit === "username" ? 30 : 60} placeholder={profileEdit === "username" ? "yourname" : "Enter " + profileEdit} /></label>{profileEdit === "username" && <small>Changing your username also changes the username you use to sign in.</small>}{profileSaveMessage && <p role="status" className="profile-edit-message">{profileSaveMessage}</p>}<div className="contact-form-actions"><button type="submit" className="save-contact-button" disabled={profileSaving}>{profileSaving ? "Saving…" : "Save"}</button></div></form></section></div>}      {cropFile && <div className="modal-backdrop profile-crop-backdrop" onClick={() => { setCropFile(null); setCropPreview(""); }}><section className="profile-crop-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-crop-title" onClick={(event) => event.stopPropagation()}><header><h2 id="profile-crop-title">Adjust profile photo</h2><button type="button" onClick={() => { setCropFile(null); setCropPreview(""); }} aria-label="Close photo cropper">×</button></header><p>Move and zoom your photo to choose what appears in your profile.</p><div className="profile-crop-window"><img src={cropPreview} alt="Crop preview" style={{ width: "100%", height: "100%", objectFit: "cover", transform: `scale(${cropZoom}) translate(${(50 - cropX) * 1.4}%, ${(50 - cropY) * 1.4}%)` }}/></div><label>Zoom <input type="range" min="1" max="3" step="0.01" value={cropZoom} onChange={(event) => setCropZoom(Number(event.target.value))}/></label><label>Horizontal position <input type="range" min="0" max="100" value={cropX} onChange={(event) => setCropX(Number(event.target.value))}/></label><label>Vertical position <input type="range" min="0" max="100" value={cropY} onChange={(event) => setCropY(Number(event.target.value))}/></label><footer><button type="button" className="cancel-button" onClick={() => { setCropFile(null); setCropPreview(""); }}>Cancel</button><button type="button" className="save-contact-button" disabled={profileUploading} onClick={() => { void uploadCroppedProfilePicture(); }}>Use photo</button></footer></section></div>}      <div className={`dashboard-content ${settings.theme === "dark" ? "theme-dark" : ""} ${settings.compactChats ? "compact-chats" : ""}`}>
       {activeSection === "chats" ? <>
         <aside className={`inbox ${mobileOpenChat ? "inbox-mobile-hidden" : ""}`} id="chats">
           <header className="inbox-heading"><div><span className="eyebrow">YOUR CONVERSATIONS</span><h1>Messages<span className="heading-period">.</span></h1></div><button className="new-chat-button" onClick={openAddContact} aria-label="Add a contact" title="Add a contact"><Icon name="plus" size={21}/></button></header>
@@ -784,21 +862,26 @@ export default function WhatsApp() {
         <div className="language-section-label"><span>LANGUAGE PARTNERS</span><span>{languagePartners.length.toString().padStart(2, "0")}</span></div>
         {languagePartners.length ? <div className="partner-grid">{languagePartners.map((partner, index) => <article className="partner-card" key={partner.id}><div className="partner-card-top"><span className={`person-avatar person-avatar-${index % 6} partner-avatar`}>{getInitials(partner.name)}</span><span className="partner-status">{partner.nativeLanguage || "Language not set"}</span></div><h2>{partner.name}</h2><p className="partner-level">{partner.phone}</p><div className="partner-languages"><span><small>Speaks</small><strong>{partner.nativeLanguage || "Not set"}</strong></span><span className="partner-arrow">↔</span><span><small>Learning</small><strong>{partner.learningLanguage}</strong></span></div><button className="partner-message" onClick={() => openChat(partner.id)}><Icon name="chat" size={15}/> Open chat</button></article>)}</div> : <div className="empty-language"><span className="empty-spark"><Icon name="language" size={25}/></span><h2>No language partners yet</h2><p>Add a contact and include the language they speak and the one they are learning. They will appear here.</p><button className="partner-message" onClick={() => { openAddContact(); }}><Icon name="plus" size={16}/> Add a language partner</button></div>}
       </section> : activeSection === "community" ? <CommunityPage contacts={chats.map(({ id, name }) => ({ id, name }))} /> : activeSection === "call-log" ? <CallLogPage /> : activeSection === "status" ? <StatusPage embedded /> : <section className="settings-section">
-        <header className="settings-heading">
-          <h1>Settings<span className="heading-period">.</span></h1>
-          <p>Your preferences are saved in this browser.</p>
+        <header className="settings-heading profile-page-heading">
+          <h1>Profile</h1>
         </header>
-        <div className="settings-card">
+                <div className="settings-card profile-hero-card">
+          <div className="profile-picture-controls"><span className="profile-picture-preview">{profileImage ? <img src={profileImage} alt="Your profile"/> : "Y"}</span><label className={`profile-picture-upload ${profileUploading ? "profile-picture-uploading" : ""}`} aria-label={profileUploading ? "Uploading profile picture" : profileImage ? "Change profile picture" : "Choose profile picture"} title={profileUploading ? "Uploading…" : profileImage ? "Change profile picture" : "Choose profile picture"}><Icon name="media" size={20}/><input type="file" accept="image/*" aria-label="Choose profile picture" disabled={profileUploading} onChange={(event) => { chooseProfilePicture(event.currentTarget.files?.[0]); event.currentTarget.value = ""; }}/></label><button type="button" className="profile-edit-photo" onClick={() => document.querySelector<HTMLInputElement>(".profile-picture-upload input")?.click()}>Edit photo</button></div>
+          {profileMessage && <p className="profile-picture-message" role="status">{profileMessage}</p>}
+        </div>
+        <div className="settings-card profile-info-card">
+          <button className="profile-info-row" type="button" onClick={() => openProfileEdit("name")}><span>Name</span><span>{profileName || "Add your name"} <b>›</b></span></button>
+          <button className="profile-info-row" type="button" onClick={() => openProfileEdit("username")}><span>Username</span><span className="profile-green-value">{profileUsername ? `@${profileUsername}` : "Reserve username"} <b>›</b></span></button>
+          <div className="profile-info-row profile-phone-row"><span>Phone number</span><span>{accountPhone || "+27 71 162 7064"}<b>›</b></span></div>
+          <button className="profile-info-row" type="button" onClick={() => openProfileEdit("about")}><span>About</span><span>{profileAbout || "Add a short bio"} <b>›</b></span></button>
+
+<div className="settings-card messaging-phone-card">
           <div className="settings-card-heading"><div><h2>Messaging phone number</h2><p>Register the number other signed-up accounts will use to find you.</p></div></div>
           <form onSubmit={saveMessagingPhone} className="contact-form messaging-phone-form"><label>Phone number<input type="tel" autoComplete="tel" value={accountPhone} onChange={(event) => setAccountPhone(event.target.value)} placeholder="+27821234567" required /></label><button type="submit">Save number</button></form>
           {phoneSaveStatus && <p role="status">{phoneSaveStatus}</p>}
         </div>
-        <div className="settings-card">
-          <div className="settings-card-heading"><div><h2>Profile picture</h2><p>Add or change the photo shown on your profile.</p></div></div>
-          <div className="profile-picture-controls"><span className="profile-picture-preview">{profileImage ? <img src={profileImage} alt="Your profile"/> : "Y"}</span><label className={`profile-picture-upload ${profileUploading ? "profile-picture-uploading" : ""}`} aria-label={profileUploading ? "Uploading profile picture" : profileImage ? "Change profile picture" : "Choose profile picture"} title={profileUploading ? "Uploading…" : profileImage ? "Change profile picture" : "Choose profile picture"}><Icon name="media" size={20}/><input type="file" accept="image/*" aria-label="Choose profile picture" disabled={profileUploading} onChange={(event) => { void uploadProfilePicture(event.currentTarget.files?.[0]); event.currentTarget.value = ""; }}/></label><small>Image up to 5 MB</small></div>
-          {profileMessage && <p className="profile-picture-message" role="status">{profileMessage}</p>}
         </div>
-        <div className="settings-card">
+        <div className="settings-card profile-appearance-card">
           <div className="settings-card-heading">
             <div><h2>Appearance</h2><p>Choose the look that feels right for you.</p></div>
             <Icon name="settings" size={19}/>
