@@ -5,13 +5,6 @@ import Image from "next/image";
 import NavigationIcon from "./NavigationIcon";
 import { createClient } from "@/lib/supabase/client";
 
-export const EMOJI_CATEGORIES = {
-  Smileys: ["😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🥳", "😔", "😢", "😭", "😤", "😠", "🤯"],
-  Gestures: ["👋", "🤚", "🖐️", "✋", "🖖", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", "👍", "👎", "✊", "👊", "👏", "🙌", "👐", "🤲", "🤝", "🙏"],
-  Hearts: ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "❣️", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "💟"],
-  Objects: ["🎉", "🎊", "✨", "⭐", "🌟", "🔥", "💯", "✅", "🎵", "🎶", "📷", "🎁", "💡", "💬", "📱", "💻", "📚", "☕", "🍕", "🌍"],
-} as const;
-export type EmojiCategory = keyof typeof EMOJI_CATEGORIES;
 
 const STATUS_KEY = "lingo:statuses:v1";
 const SETTINGS_KEY = "lingo:settings:v1";
@@ -59,6 +52,7 @@ export default function StatusPage({ embedded = false, hidden = false }: { embed
   const [draft, setDraft] = useState("");
   const [mediaData, setMediaData] = useState("");
   const [mediaType, setMediaType] = useState("");
+  const [isPublishing, setIsPublishing] = useState(false);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [activeStatus, setActiveStatus] = useState<Status | null>(null);
   const [activeStatusIndex, setActiveStatusIndex] = useState(0);
@@ -66,8 +60,6 @@ export default function StatusPage({ embedded = false, hidden = false }: { embed
   const [statusMenuId, setStatusMenuId] = useState<string | null>(null);
   const [statusListMessage, setStatusListMessage] = useState("");
   const [error, setError] = useState("");
-  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
-  const [emojiCategory, setEmojiCategory] = useState<EmojiCategory>("Smileys");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
 
@@ -178,41 +170,58 @@ export default function StatusPage({ embedded = false, hidden = false }: { embed
 
   async function publishStatus(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const text = draft.trim();
-    if (!text && !mediaData) return;
-    const nextStatus: Status = { id: crypto.randomUUID(), text, createdAt: new Date().toISOString(), ...(mediaData ? { mediaData, mediaType } : {}) };
-    if (currentUserId) {
-      const { error: publishError } = await createClient().from("status_updates").insert({
-        id: nextStatus.id,
-        owner_id: currentUserId,
-        text: nextStatus.text,
-        media_data: nextStatus.mediaData ?? null,
-        media_type: nextStatus.mediaType ?? null,
-        created_at: nextStatus.createdAt,
-      });
-      if (publishError) {
-        setError("Couldn’t publish this status. Check that the status tracking migration is applied.");
-        return;
-      }
-      setStatuses((current) => sortStatuses([...current, { ...nextStatus, ownerId: currentUserId, viewCount: 0 }]));
-    } else {
-      const next = sortStatuses([nextStatus, ...readStatuses()]);
-      try {
-      window.localStorage.setItem(STATUS_KEY, JSON.stringify(next));
-      setStatuses(next);
-      } catch {
-        setError("There isn’t enough browser storage for this media. Try a smaller file.");
-        return;
-      }
-    }
-    setDraft("");
-    setMediaData("");
-    setMediaType("");
-    setError("");
-    setIsEmojiPickerOpen(false);
-    setIsComposerOpen(false);
-  }
+    if (isPublishing) return;
 
+    const text = draft.trim();
+    if (!text && !mediaData) {
+      setError("Add text or a photo/video before sharing.");
+      textareaRef.current?.focus();
+      return;
+    }
+
+    setIsPublishing(true);
+    setError("");
+    const nextStatus: Status = {
+      id: crypto.randomUUID(),
+      text,
+      createdAt: new Date().toISOString(),
+      ...(mediaData ? { mediaData, mediaType } : {}),
+    };
+
+    try {
+      if (currentUserId) {
+        const { error: publishError } = await createClient().from("status_updates").insert({
+          id: nextStatus.id,
+          owner_id: currentUserId,
+          text: nextStatus.text,
+          media_data: nextStatus.mediaData ?? null,
+          media_type: nextStatus.mediaType ?? null,
+          created_at: nextStatus.createdAt,
+        });
+        if (publishError) {
+          setError(`Couldn’t share status: ${publishError.message}`);
+          return;
+        }
+        setStatuses((current) => sortStatuses([...current, { ...nextStatus, ownerId: currentUserId, viewCount: 0 }]));
+      } else {
+        const next = sortStatuses([nextStatus, ...readStatuses()]);
+        window.localStorage.setItem(STATUS_KEY, JSON.stringify(next));
+        setStatuses(next);
+      }
+
+      setDraft("");
+      setMediaData("");
+      setMediaType("");
+      
+      setIsComposerOpen(false);
+    } catch (publishError) {
+      setError(publishError instanceof Error
+        ? `Couldn’t share status: ${publishError.message}`
+        : "Couldn’t share the status. Check your connection and try again.");
+    } finally {
+      setIsPublishing(false);
+    }
+  }
   function chooseMedia(file?: File) {
     setError("");
     if (!file) return;
@@ -231,19 +240,6 @@ export default function StatusPage({ embedded = false, hidden = false }: { embed
     };
     reader.onerror = () => setError("Couldn’t read that file. Please try another.");
     reader.readAsDataURL(file);
-  }
-
-  function insertEmoji(emoji: string) {
-    const textarea = textareaRef.current;
-    const start = textarea?.selectionStart ?? draft.length;
-    const end = textarea?.selectionEnd ?? draft.length;
-    const nextDraft = `${draft.slice(0, start)}${emoji}${draft.slice(end)}`;
-    setDraft(nextDraft);
-    setIsEmojiPickerOpen(false);
-    requestAnimationFrame(() => {
-      textarea?.focus();
-      textarea?.setSelectionRange(start + emoji.length, start + emoji.length);
-    });
   }
 
   function viewOwnStatuses() {
@@ -372,7 +368,7 @@ export default function StatusPage({ embedded = false, hidden = false }: { embed
         
       </div>
     </section>
-    {isComposerOpen && <div className="status-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) { setIsComposerOpen(false); setIsEmojiPickerOpen(false); setError(""); } }}><section className="status-compose-modal" role="dialog" aria-modal="true" aria-labelledby="status-compose-title"><header><div><span className="status-eyebrow">NEW UPDATE</span><h2 id="status-compose-title">Share a status</h2></div><button onClick={() => { setIsComposerOpen(false); setIsEmojiPickerOpen(false); setError(""); }} aria-label="Close">×</button></header><form onSubmit={publishStatus}><label htmlFor="status-text">{mediaData ? "Write a caption" : "What’s on your mind?"}</label><div className="status-textarea-wrap"><textarea ref={textareaRef} id="status-text" autoFocus maxLength={280} placeholder={mediaData ? "Add a caption to your photo or video…" : "Share a little moment…"} value={draft} onChange={(event) => setDraft(event.target.value)} /><div className="composer-wrap status-emoji-wrap">{isEmojiPickerOpen && <div className="emoji-picker" role="dialog" aria-label="Choose an emoji"><div className="emoji-picker-heading"><strong>Choose an emoji</strong><button type="button" onClick={() => setIsEmojiPickerOpen(false)} aria-label="Close emoji picker"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="m18 6-12 12M6 6l12 12"/></svg></button></div><div className="emoji-category-tabs">{(Object.keys(EMOJI_CATEGORIES) as EmojiCategory[]).map((category) => <button type="button" key={category} className={emojiCategory === category ? "emoji-category-active" : ""} onClick={() => setEmojiCategory(category)}>{category}</button>)}</div><div className="emoji-grid">{EMOJI_CATEGORIES[emojiCategory].map((emoji, index) => <button type="button" key={`${emoji}-${index}`} aria-label={`Insert ${emoji}`} onClick={() => insertEmoji(emoji)}>{emoji}</button>)}</div></div>}<button className="composer-tool" type="button" aria-label="Choose an emoji" title="Choose an emoji" aria-expanded={isEmojiPickerOpen} onClick={() => setIsEmojiPickerOpen((open) => !open)}><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg></button></div></div><input ref={mediaInputRef} className="status-media-input" type="file" accept="image/*,video/*" onChange={(event) => chooseMedia(event.target.files?.[0])} /><div className="status-media-actions"><button className="status-emoji-toggle" type="button" onClick={() => mediaInputRef.current?.click()}>＋ Add photo or video</button>{mediaData && <button className="status-media-remove" type="button" onClick={() => { setMediaData(""); setMediaType(""); if (mediaInputRef.current) mediaInputRef.current.value = ""; }}>Remove media</button>}</div>{mediaData && <div className="status-media-preview">{mediaType.startsWith("video/") ? <video src={mediaData} controls /> : <img src={mediaData} alt="Status media preview" />}</div>}<div className="status-compose-meta"><span>{error || (mediaData ? "Your caption will appear with the media" : "Add text, media, or both")}</span><span>{draft.length}/280</span></div><button className="status-publish-button" disabled={!draft.trim() && !mediaData}>Share status</button></form></section></div>}
+    {isComposerOpen && <div className="status-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) { setIsComposerOpen(false); setError(""); } }}><section className="status-compose-modal" role="dialog" aria-modal="true" aria-labelledby="status-compose-title"><header><div><span className="status-eyebrow">NEW UPDATE</span><h2 id="status-compose-title">Share a status</h2></div><button onClick={() => { setIsComposerOpen(false); setError(""); }} aria-label="Close">×</button></header><form onSubmit={publishStatus}><label htmlFor="status-text">{mediaData ? "Write a caption" : "What’s on your mind?"}</label><div className="status-textarea-wrap"><textarea ref={textareaRef} id="status-text" autoFocus maxLength={280} placeholder={mediaData ? "Add a caption to your photo or video…" : "Share a little moment…"} value={draft} onChange={(event) => setDraft(event.target.value)} /></div><input ref={mediaInputRef} className="status-media-input" type="file" accept="image/*,video/*" onChange={(event) => chooseMedia(event.target.files?.[0])} /><div className="status-media-actions"><button className="status-emoji-toggle" type="button" onClick={() => mediaInputRef.current?.click()}>＋ Add photo or video</button>{mediaData && <button className="status-media-remove" type="button" onClick={() => { setMediaData(""); setMediaType(""); if (mediaInputRef.current) mediaInputRef.current.value = ""; }}>Remove media</button>}</div>{mediaData && <div className="status-media-preview">{mediaType.startsWith("video/") ? <video src={mediaData} controls /> : <img src={mediaData} alt="Status media preview" />}</div>}<div className="status-compose-meta"><span>{error || (mediaData ? "Your caption will appear with the media" : "Add text, media, or both")}</span><span>{draft.length}/280</span></div><button className="status-publish-button" type="submit" disabled={isPublishing}>{isPublishing ? "Sharing…" : "Share status"}</button></form></section></div>}
     {isStatusListOpen && <div className="status-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) { setIsStatusListOpen(false); setStatusMenuId(null); } }}><section className="status-list-modal" role="dialog" aria-modal="true" aria-labelledby="status-list-title"><header><div><span className="status-eyebrow">YOUR UPDATES</span><h2 id="status-list-title">My status</h2></div><button type="button" aria-label="Close status list" onClick={() => { setIsStatusListOpen(false); setStatusMenuId(null); }}>×</button></header>{statusListMessage && <p className="status-list-message" role="status">{statusListMessage}</p>}<div className="status-list-items">{[...statuses].reverse().map((status) => <div className="status-list-item-wrap" key={status.id}><button className="status-list-item" type="button" onClick={() => viewStatus(status)}>{status.mediaData ? status.mediaType?.startsWith("video/") ? <video src={status.mediaData} muted /> : <img src={status.mediaData} alt="" /> : <span className="status-list-text-preview">{status.text || "Text status"}</span>}<span className="status-list-item-copy"><strong>{status.text || (status.mediaType?.startsWith("video/") ? "Video status" : "Photo status")}</strong><small>{status.viewCount ?? 0} {status.viewCount === 1 ? "view" : "views"} · {new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(status.createdAt))}</small></span></button><button className="status-list-menu-trigger" type="button" aria-label={`More options for status posted ${new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(status.createdAt))}`} aria-expanded={statusMenuId === status.id} onClick={() => setStatusMenuId((current) => current === status.id ? null : status.id)}><span/><span/><span/></button>{statusMenuId === status.id && <div className="status-list-action-menu" role="menu"><button type="button" role="menuitem" onClick={() => void deleteStatusFromList(status.id)}>Delete</button><button type="button" role="menuitem" onClick={() => void shareStatusFromList(status, "forward")}>Forward</button><button type="button" role="menuitem" onClick={() => void shareStatusFromList(status, "share")}>Share</button></div>}</div>)}</div></section></div>}
     {activeStatus && <div className="status-modal-backdrop" onClick={() => setActiveStatus(null)}><section className={`status-viewer ${activeStatus.mediaData && !activeStatus.mediaType?.startsWith("video/") ? "status-viewer-has-image" : ""}`} role="dialog" aria-modal="true" aria-label="Status update" onClick={(event) => event.stopPropagation()} onPointerUp={navigateStatusByTap}><div className="status-viewer-progress"><i key={activeStatus.id}/></div><header><span className="status-avatar status-viewer-avatar">Y</span><span><strong>{activeStatus.ownerId && activeStatus.ownerId !== currentUserId ? "Contact" : "You"}</strong><small>{new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(activeStatus.createdAt))} · {activeStatusIndex + 1} of {viewingStatuses.length}</small></span><button className="status-viewer-dismiss" type="button" aria-label="Close status" title="Close status" onPointerUp={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setActiveStatus(null); }}>×</button></header>{activeStatus.mediaData && (activeStatus.mediaType?.startsWith("video/") ? <video className="status-viewer-media" src={activeStatus.mediaData} controls autoPlay /> : <img className="status-viewer-media status-viewer-image" src={activeStatus.mediaData} alt="Status" />)}{activeStatus.text && <p>{activeStatus.text}</p>}</section></div>}
   </StatusContainer>;

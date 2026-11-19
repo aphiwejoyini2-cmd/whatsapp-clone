@@ -812,3 +812,45 @@ button.profile-info-row:hover{border-color:#cbd9cb;background:#f0f5ef}
 .contact-danger-actions{margin:0 22px 18px;display:flex;gap:9px}
 .contact-danger-actions .block-contact-button,.contact-danger-actions .delete-contact-button{width:auto;min-width:0;min-height:38px;flex:1;margin:0;padding:0 12px;border-radius:999px;font-size:10px}
 @media(max-width:620px){.contact-danger-actions{margin:0 15px 15px;gap:8px}.contact-danger-actions .block-contact-button,.contact-danger-actions .delete-contact-button{min-height:36px;padding:0 9px;font-size:9px}}
+
+/* Keep the message input aligned within the themed typing field. */
+.composer-input-shell{min-width:0;min-height:40px;flex:1;display:flex;align-items:center;gap:5px;border-radius:999px;background:transparent}
+/* Status composer emoji control sits inside the text field and follows the selected theme. */
+.status-compose-modal .status-textarea-wrap textarea{padding:13px 48px 48px 13px}
+.status-compose-modal .status-textarea-wrap .status-emoji-wrap{top:auto;right:8px;bottom:8px;width:auto;margin:0;padding:0}
+.status-compose-modal .status-emoji-input-button{width:32px;height:32px;border:0!important;border-radius:999px!important;background:transparent!important;box-shadow:none!important;color:#528763;transform:none}
+.status-compose-modal .status-emoji-input-button:hover{background:transparent!important;box-shadow:none!important;color:#34754c;transform:none}
+.status-compose-modal .status-textarea-wrap .emoji-picker{top:auto;right:0;bottom:calc(100% + 6px)}
+.status-page.theme-dark .status-compose-modal header button{border:1px solid #333;background:#1a1a1a;color:#ddd}
+.status-page.theme-dark .status-compose-modal .status-emoji-input-button{color:#a5d4ad}
+.status-page.theme-dark .status-compose-modal .status-emoji-input-button:hover{background:transparent!important;color:#c0e4c5}
+/* Anchor the status emoji button to the full-width textarea, not the modal. */
+.status-compose-modal .status-textarea-wrap textarea{display:block;width:100%;box-sizing:border-box;padding:13px 48px 48px 13px}
+.status-compose-modal .status-textarea-wrap .status-emoji-wrap{position:absolute;top:auto;right:8px;bottom:8px;width:auto;margin:0;padding:0}
+.status-compose-modal .status-emoji-input-button{width:32px;height:32px;padding:0;display:grid;place-items:center;border:0;border-radius:999px;background:transparent;color:#528763;box-shadow:none;cursor:pointer}
+.status-compose-modal .status-emoji-input-button:hover{background:transparent;color:#34754c;box-shadow:none}
+.status-compose-modal .status-textarea-wrap .emoji-picker{top:auto;right:0;bottom:calc(100% + 6px)}
+.status-page.theme-dark .status-compose-modal header button{border:1px solid #333;background:#1a1a1a;color:#ddd}
+.status-page.theme-dark .status-compose-modal .status-emoji-input-button{background:transparent;color:#a5d4ad}
+.status-page.theme-dark .status-compose-modal .status-emoji-input-button:hover{background:transparent;color:#c0e4c5}.status-compose-modal button.status-emoji-input-button{appearance:none;-webkit-appearance:none;background-color:transparent!important;background-image:none!important}
+.status-page.theme-dark .status-compose-modal button.status-emoji-input-button{background-color:transparent!important;background-image:none!important}
+/* Match the status emoji control and share action to the dark theme. */
+.status-page.theme-dark .status-compose-modal button.status-emoji-input-button{border:1px solid #344638!important;border-radius:999px;background:#202820!important;color:#a5d4ad;box-shadow:none!important}
+.status-page.theme-dark .status-compose-modal button.status-emoji-input-button:hover{border-color:#46644b!important;background:#263529!important;color:#b5dbbb}
+.status-compose-modal .status-publish-button{min-height:44px;padding:0 20px;border-radius:999px;transition:background .16s ease,transform .16s ease,box-shadow .16s ease}
+.status-compose-modal .status-publish-button:hover:not(:disabled){background:#28764e;box-shadow:0 5px 14px #0002;transform:translateY(-1px)}
+.status-compose-modal .status-publish-button:active:not(:disabled){transform:translateY(0)}
+/* Reset the status text-field emoji button independent of inherited button classes. */
+.status-compose-modal .status-textarea-wrap>.status-emoji-wrap>button{all:unset!important;box-sizing:border-box!important;width:32px!important;height:32px!important;display:grid!important;place-items:center!important;border:0!important;border-radius:999px!important;background:transparent!important;background-image:none!important;box-shadow:none!important;color:#528763!important;cursor:pointer!important}
+.status-compose-modal .status-textarea-wrap>.status-emoji-wrap>button:hover{background:transparent!important;color:#34754c!important}
+.status-page.theme-dark .status-compose-modal .status-textarea-wrap>.status-emoji-wrap>button{border:1px solid #344638!important;background:#202820!important;background-image:none!important;color:#a5d4ad!important}
+.status-page.theme-dark .status-compose-modal .status-textarea-wrap>.status-emoji-wrap>button:hover{border-color:#46644b!important;background:#263529!important;color:#b5dbbb!important}.status-compose-modal .status-textarea-wrap>.status-emoji-wrap{background:transparent!important;border:0!important;box-shadow:none!important}
+.status-page.theme-dark .status-compose-modal .status-textarea-wrap>.status-emoji-wrap{background:transparent!important;border:0!important;box-shadow:none!important}
+/* Neutralize the Share status button while keeping its pill shape. */
+.status-compose-modal .status-publish-button{border:1px solid #dce3da;background:#eef1ed;color:#344239}
+.status-compose-modal .status-publish-button:hover:not(:disabled){border-color:#cbd5cb;background:#e3e9e2;color:#2e3931;box-shadow:0 5px 14px #0002;transform:translateY(-1px)}
+.status-page.theme-dark .status-compose-modal .status-publish-button{border-color:#383838;background:#202020;color:#eee;box-shadow:none}
+.status-page.theme-dark .status-compose-modal .status-publish-button:hover:not(:disabled){border-color:#4a4a4a;background:#2b2b2b;color:#fff;box-shadow:0 5px 14px #0005}
+
+
+.status-compose-modal .status-textarea-wrap textarea{padding:13px}
