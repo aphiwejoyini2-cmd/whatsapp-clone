@@ -777,3 +777,19 @@ button.profile-info-row:hover{border-color:#cbd9cb;background:#f0f5ef}
 .messenger-shell.theme-dark .profile-crop-dialog>p,.messenger-shell.theme-dark .profile-crop-dialog>label{color:#aaa}
 .messenger-shell.theme-dark .profile-crop-dialog>header button{background:#202020;color:#eee}
 @media(max-width:620px){.profile-crop-window{width:210px;height:210px}}
+/* Profile edit dialogs sit beside dashboard-content, so theme them from the shell. */
+.messenger-shell.theme-dark .profile-edit-modal{border-color:#303030;background:#111;color:#ededed}
+.messenger-shell.theme-dark .profile-edit-modal .contact-modal-heading{border-color:#292929;background:#111}
+.messenger-shell.theme-dark .profile-edit-modal .contact-modal-heading h2{color:#f2f2f2}
+.messenger-shell.theme-dark .profile-edit-modal .contact-form>label{color:#c7c7c7}
+.messenger-shell.theme-dark .profile-edit-modal .contact-form input{border-color:#303030;background:#1a1a1a;color:#eee}
+.messenger-shell.theme-dark .profile-edit-modal .contact-form input:focus{border-color:#555;box-shadow:0 0 0 3px #ffffff12}
+.messenger-shell.theme-dark .profile-edit-modal .contact-form input::placeholder,.messenger-shell.theme-dark .profile-edit-modal small,.messenger-shell.theme-dark .profile-edit-message{color:#999}
+.messenger-shell.theme-dark .profile-edit-modal .cancel-button{border-color:#383838;background:#1a1a1a;color:#d6d6d6}
+.messenger-shell.theme-dark .profile-edit-modal .save-contact-button{border-color:#292929;background:#0d0d0d;color:#eee}
+.messenger-shell.theme-dark .profile-edit-modal .save-contact-button:hover{border-color:#444;background:#191919}
+.profile-edit-modal .cancel-button,.profile-edit-modal .save-contact-button{min-height:42px;padding:0 20px;border-radius:999px}
+/* Confine the transparent photo picker overlay to the avatar, away from profile rows. */
+.profile-hero-card .profile-picture-controls{position:relative}
+.profile-hero-card .profile-picture-upload{top:0;left:50%;transform:translateX(-50%);z-index:1}
+.profile-hero-card .profile-picture-upload:hover{transform:translateX(-50%)}
